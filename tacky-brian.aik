@@ -1,0 +1,20 @@
+.const {r0 r1 r2 r3 r4 ra rv sp}
+
+; 8 bit operators
+.C1 $.r := .this:5 .r:3
+.C1 $.r0 , .C1 $.r1 := .this:5 .r0:3 .C1:5 .r1:3
+.alias .C1 a2r r2a lf li st cvt sh slt add sub mul div not xor and or jr  
+
+; 13 bit + 3 bit padding
+.C2 .imm := .this:5 .imm:8 0:3
+.alias .C2 17 pre jp8 sys  
+
+; 16 bit 
+.C3 $.r, .imm := .this:5 .r:3 .imm:8
+.alias .C3 20 cf8 ci8 jnz8 jz8
+
+; 32 bit macros
+.C4 $.r, .imm := 17:5 (.imm & 0b1111111100000000):8 (20 + .this):5 (.imm & 0b0000000011111111):8
+.alias .C4 cf ci jnz jz
+
+jp addr := 17:5 (addr & 0b1111111100000000):8 0:3 18:5 (addr & 0b0000000011111111):8 0:3
