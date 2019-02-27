@@ -1,13 +1,15 @@
-// basic sizes of things
+// basic sizes of things 
 `define WORD	[15:0]
-`define Opcode	[15:12]
-`define Dest	[11:6]
-`define Src	[5:0]
-`define STATE	[4:0]
+`define Opcode	[15:11]
+`define Reg		[11:9]
+`define Imm		[8:0]
+`define STATE	[5:0]
+
+// TODO: modify for our code
 `define REGSIZE [63:0]
 `define MEMSIZE [65535:0]
 
-
+// 8 bit operators
 // opcode values, also state numbers
 `define OPa2r	4'b00000
 `define OPr2a	4'b00001
@@ -27,7 +29,17 @@
 `define OPor	4'b01111
 `define OPjr	4'b10000
 
+// 13 bit + 3 bit padding: pre jp8 sys
+`define OPpre	4'b10001 // must be 17
+`define OPjp8   4'b10010
+`define OPsys   4'b10011
 
+// 16 bit
+// cf8 ci8 jnz8 jz8
+`define OPcf8	4'b10100
+`define OPci8	4'b10101
+`define OPjnz8	4'b10110
+`define OPjz8	4'b10111
 
 
 // state numbers only
@@ -42,56 +54,56 @@
 `define SRCsz	6'b000001
 
 module processor(halt, reset, clk);
-output reg halt;
-input reset, clk;
+	output reg halt;
+	input reset, clk;
 
-reg `WORD regfile `REGSIZE;
-reg `WORD mainmem `MEMSIZE;
-reg `WORD pc = 0;
-reg `WORD ir;
-reg `STATE s = `Start;
-integer a;
+	reg `WORD regfile `REGSIZE;
+	reg `WORD mainmem `MEMSIZE;
+	reg `WORD pc = 0;
+	reg `WORD ir;
+	reg `STATE s = `Start;
+	integer a;
 
-always @(reset) begin
-  halt = 0;
-  pc = 0;
-  s = `Start;
-  $readmemh0(regfile);
-  $readmemh1(mainmem);
-end
+	always @(reset) begin
+	  halt = 0;
+	  pc = 0;
+	  s = `Start;
+	  $readmemh0(regfile);
+	  $readmemh1(mainmem);
+	end
 
-always @(posedge clk) begin
-  case (s)
-    `Start: begin ir <= mainmem[pc]; s <= `Start1; end
-    `Start1: begin
-             pc <= pc + 1;            // bump pc
-	     case (ir `Opcode)
-	     `OPjzsz:
-                case (ir `Src)	      // use Src as extended opcode
-                `SRCsys: s <= `OPsys; // sys call
-                `SRCsz: s <= `OPsz;   // sz
-                default: s <= `OPjz;  // jz
-	     endcase
-             default: s <= ir `Opcode; // most instructions, state # is opcode
-	     endcase
-	    end
+	always @(posedge clk) begin
+	  case (s)
+		`Start: begin ir <= mainmem[pc]; s <= `Start1; end
+		`Start1: begin
+				 pc <= pc + 1;            // bump pc
+			 case (ir `Opcode)
+			 `OPjzsz:
+					case (ir `Src)	      // use Src as extended opcode
+					`SRCsys: s <= `OPsys; // sys call
+					`SRCsz: s <= `OPsz;   // sz
+					default: s <= `OPjz;  // jz
+			 endcase
+				 default: s <= ir `Opcode; // most instructions, state # is opcode
+			 endcase
+			end
 
-    `OPadd: begin regfile[ir `Dest] <= regfile[ir `Dest] + regfile[ir `Src]; s <= `Start; end
-    `OPand: begin regfile[ir `Dest] <= regfile[ir `Dest] & regfile[ir `Src]; s <= `Start; end
-    `OPany: begin regfile[ir `Dest] <= |regfile[ir `Src]; s <= `Start; end
-    `OPdup: begin regfile[ir `Dest] <= regfile[ir `Src]; s <= `Start; end
-    `OPjz: begin if (regfile[ir `Dest] == 0) pc <= regfile[ir `Src]; s <= `Start; end
-    `OPld: begin regfile[ir `Dest] <= mainmem[regfile[ir `Src]]; s <= `Start; end
-    `OPli: begin regfile[ir `Dest] <= mainmem[pc]; pc <= pc + 1; s <= `Start; end
-    `OPor: begin regfile[ir `Dest] <= regfile[ir `Dest] | regfile[ir `Src]; s <= `Start; end
-    `OPsz: begin if (regfile[ir `Dest] == 0) pc <= pc + 1; s <= `Start; end
-    `OPshr: begin regfile[ir `Dest] <= regfile[ir `Src] >> 1; s <= `Start; end
-    `OPst: begin mainmem[regfile[ir `Src]] <= regfile[ir `Dest]; s <= `Start; end
-    `OPxor: begin regfile[ir `Dest] <= regfile[ir `Dest] ^ regfile[ir `Src]; s <= `Start; end
+		`OPadd: begin regfile[ir `Dest] <= regfile[ir `Dest] + regfile[ir `Src]; s <= `Start; end
+		`OPand: begin regfile[ir `Dest] <= regfile[ir `Dest] & regfile[ir `Src]; s <= `Start; end
+		`OPany: begin regfile[ir `Dest] <= |regfile[ir `Src]; s <= `Start; end
+		`OPdup: begin regfile[ir `Dest] <= regfile[ir `Src]; s <= `Start; end
+		`OPjz: begin if (regfile[ir `Dest] == 0) pc <= regfile[ir `Src]; s <= `Start; end
+		`OPld: begin regfile[ir `Dest] <= mainmem[regfile[ir `Src]]; s <= `Start; end
+		`OPli: begin regfile[ir `Dest] <= mainmem[pc]; pc <= pc + 1; s <= `Start; end
+		`OPor: begin regfile[ir `Dest] <= regfile[ir `Dest] | regfile[ir `Src]; s <= `Start; end
+		`OPsz: begin if (regfile[ir `Dest] == 0) pc <= pc + 1; s <= `Start; end
+		`OPshr: begin regfile[ir `Dest] <= regfile[ir `Src] >> 1; s <= `Start; end
+		`OPst: begin mainmem[regfile[ir `Src]] <= regfile[ir `Dest]; s <= `Start; end
+		`OPxor: begin regfile[ir `Dest] <= regfile[ir `Dest] ^ regfile[ir `Src]; s <= `Start; end
 
-    default: halt <= 1;
-  endcase
-end
+		default: halt <= 1;
+	  endcase
+	end
 endmodule
 
 // Floating point Verilog modules for CPE480
