@@ -1,0 +1,40 @@
+; ----------------- Instructions ----------------
+; Simple Instructions
+.ACC $.reg0, .ACC $.reg1 := .this:5 .reg0:3 .ACC :5 .reg1:3
+.IMM8 .val:= .this:5 0:3 .val:8
+.R_IMM8 $.reg, .val:= .this:5 .reg:3 .val:8 ; With comma
+.R_IMM8 $.reg  .val:= .this:5 .reg:3 .val:8 ; Without comma
+
+; Macro Instructions (with commas)
+.CF $.reg, .val := pre:5 0:3 (.val>>8):8 cf8:5 .reg:3 .val:8
+.CI $.reg, .val := pre:5 0:3 (.val>>8):8 ci8:5 .reg:3 .val:8
+.JNZ $.reg, .addr := pre:5 0:3 (.addr>>8):8 jnz8:5 .reg:3 .addr:8
+.JP, .addr := pre:5 0:3 (.addr>>8):8 jp8:5 0:3 .addr:8
+.JZ $.reg, .addr := pre:5 0:3 (.addr>>8):8 jz8:5 .reg:3 .addr:8
+
+; Macro Instructions (without commas)
+.CF $.reg .val := pre:5 0:3 (.val>>8):8 cf8:5 .reg:3 .val:8
+.CI $.reg .val := pre:5 0:3 (.val>>8):8 ci8:5 .reg:3 .val:8
+.JNZ $.reg .addr := pre:5 0:3 (.addr>>8):8 jnz8:5 .reg:3 .addr:8
+.JP .addr := pre:5 0:3 (.addr>>8):8 jp8:5 0:3 .addr:8
+.JZ $.reg .addr := pre:5 0:3 (.addr>>8):8 jz8:5 .reg:3 .addr:8
+
+
+
+; ------------------- Aliases -------------------
+; Regular Aliases
+.alias .ACC add sub div mul and or not xor a2r r2a sh slt st lf li cvt jr ; [0,16]
+.alias .IMM8 17 jp8 pre sys ; [17,19]
+.alias .R_IMM8 20 cf8 ci8 jnz8 jz8 ; [20,23]
+
+; Macro Aliases
+.alias .CF 24 cf   ; [24]
+.alias .CI 25 ci   ; [25]
+.alias .JNZ 26 jnz ; [26]
+.alias .JP 27 jp   ; [27]
+.alias .JZ 28 jz   ; [28]
+
+
+
+; ----------------- Registers -------------------
+.const {r0 r1 r2 r3 r4 ra rv sp}
