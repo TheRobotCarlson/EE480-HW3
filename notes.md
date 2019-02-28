@@ -13,66 +13,93 @@
 	- $6	$rv	return value
 	- $7	$sp	stack pointer (there is no frame pointer)
 
+while not halt:	
+	loading instruction
+	
+	
+	decode
+	act on code
+	memory
 
-- double wide - op r0, op r1 
-
-$r = $acc <--> $acc = $r
-	a2r 
-	r2a
-
-$r = memory[$acc], bit for float
-	lf  
-	li 
+	
+processor
+	always(clk)
+		switch(s)
+			`Fetch: ir <= mainmem[pc]; s <= `Execute;
+			`Execute:
+				pc <= pc + 1;
+				if op < b10000: PHASE 1
+					switch(op1)
+						cases
+					switch(op2)
+						cases
+						
+				else: PHASE 2
+					switch(op)
+						cases
 	
 
-memory[$r] = $acc
-	st
+- double wide - op r0, op r1 - PHASE 1 DECODING
 
-int to float, float to int	
-	cvt 
+	$r = $acc <--> $acc = $r
+		a2r 
+		r2a
 
-ALU ops
-	$acc += $r
-		add
+	$r = memory[$acc], bit for float
+		lf  
+		li 
 		
-	$acc -= $r
-		sub
-
-	$acc *= $r
-		mul
-
-	$acc /= $r	
-		div
-
-	$acc = (~$r)	
-		not
-
-	$acc ^= $r
-		xor
+	pc = $r
+		jr
 	
-	$acc &= $r
-		and
+	memory[$r] = $acc
+		st
+
+	int to float, float to int	
+		cvt 
+
+	ALU ops
+		$acc += $r
+			add
+			
+		$acc -= $r
+			sub
+
+		$acc *= $r
+			mul
+
+		$acc /= $r	
+			div
+
+		$acc = (~$r)	
+			not
+
+		$acc ^= $r
+			xor
 		
-	$acc |= $r
-		or 
-	
-	$acc = shift($acc,$r) where $r holds an int	
-		sh 
+		$acc &= $r
+			and
+			
+		$acc |= $r
+			or 
+		
+		$acc = shift($acc,$r) where $r holds an int	
+			sh 
 
-	$acc = ($acc<$r)
-		slt
+		$acc = ($acc<$r)
+			slt
 
 
-pre - 8 bit register
+- PHASE 2 DECODING		
+	pre - 8 bit register
 
-$r = {pre, imm8}
-cf8 
-ci8 
+	$r = {pre, imm8}
+	cf8 
+	ci8 
 
-jump ops
+	jump ops
+		jnz8
+		jz8
+		jp8 
 
-	jr
-	jnz8
-	jz8
-	jp8 
-
+	sys

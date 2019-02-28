@@ -1,15 +1,16 @@
 // basic sizes of things 
 `define WORD	[15:0]
 `define Opcode	[15:11]
+`define Opcode2 [7:3]
 `define Reg		[11:9]
 `define Imm		[8:0]
 `define STATE	[5:0]
 
 // TODO: modify for our code
-`define REGSIZE [63:0]
+`define REGSIZE [16:0]
 `define MEMSIZE [65535:0]
 
-// 8 bit operators
+// 8 bit operators - PHASE 1 DECODING
 // opcode values, also state numbers
 `define OPa2r	4'b00000
 `define OPr2a	4'b00001
@@ -29,6 +30,7 @@
 `define OPor	4'b01111
 `define OPjr	4'b10000
 
+// PHASE 2 DECODING
 // 13 bit + 3 bit padding: pre jp8 sys
 `define OPpre	4'b10001 // must be 17
 `define OPjp8   4'b10010
@@ -74,8 +76,8 @@ module processor(halt, reset, clk);
 
 	always @(posedge clk) begin
 	  case (s)
-		`Start: begin ir <= mainmem[pc]; s <= `Start1; end
-		`Start1: begin
+		`Start: begin ir <= mainmem[pc]; s <= `Start1; end // load from memory
+		`Start1: begin // phase 1 decoding
 				 pc <= pc + 1;            // bump pc
 			 case (ir `Opcode)
 			 `OPjzsz:
@@ -84,10 +86,10 @@ module processor(halt, reset, clk);
 					`SRCsz: s <= `OPsz;   // sz
 					default: s <= `OPjz;  // jz
 			 endcase
-				 default: s <= ir `Opcode; // most instructions, state # is opcode
+				 default: s <= ir `Opcode; // move to phase 2 decoding
 			 endcase
 			end
-
+		// phase 2 decoding
 		`OPadd: begin regfile[ir `Dest] <= regfile[ir `Dest] + regfile[ir `Src]; s <= `Start; end
 		`OPand: begin regfile[ir `Dest] <= regfile[ir `Dest] & regfile[ir `Src]; s <= `Start; end
 		`OPany: begin regfile[ir `Dest] <= |regfile[ir `Src]; s <= `Start; end
