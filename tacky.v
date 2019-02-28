@@ -46,7 +46,6 @@
 `define OPjnz8	5'b10110
 `define OPjz8	5'b10111
 
-
 // state numbers only
 `define Fetch	5'b11111
 `define Execute	5'b11110
@@ -65,7 +64,6 @@ module processor(halt, reset, clk);
 	reg `WORD tempsrc, tempa, tempb;
 
 
-
 	always @(reset) begin
 	  halt = 0;
 	  pc = 0;
@@ -82,7 +80,25 @@ module processor(halt, reset, clk);
 				pc <= pc + 1;            // bump pc
 				if(5'b10000 < s) begin // phase 1 decoding
 					case (ir `Opcode)
-					
+					`OPa2r: begin regfile[ir `Reg] <= regfile[0]; end
+					`OPr2a: begin regfile[0] <= regfile[ir `Reg]; end
+					`OPjr: begin pc <= regfile[ir `Reg] `Word; end
+					`OPst:
+					`OPlf: 
+					`OPli:
+					// ALU
+					`OPcvt:
+					`OPsh:
+					`OPslt:
+					`OPadd:
+					`OPsub:
+					`OPmul:
+					`OPdiv:
+					`OPnot:
+					`OPxor:
+					`OPand:
+					`OPor:
+
 					
 					endcase
 					case (ir `Opcode2)
