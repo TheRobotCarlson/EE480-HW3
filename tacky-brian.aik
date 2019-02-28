@@ -1,8 +1,6 @@
-.const {r0 r1 r2 r3 r4 ra rv sp}
-
 ; 8 bit operators
 .C1 $.r := .this:5 .r:3
-.C1 $.r0 , .C1 $.r1 := .this:5 .r0:3 .C1:5 .r1:3
+.C1 $.r0r , .C1 $.r1r := .this:5 .r0r:3 .C1:5 .r1r:3
 .alias .C1 a2r r2a lf li st cvt sh slt add sub mul div not xor and or jr  
 
 ; 13 bit + 3 bit padding
@@ -18,3 +16,5 @@
 .alias .C4 cf ci jnz jz
 
 jp addr := pre:5  0:3 (addr>>8):8 18:5 0:3 addr:8 
+
+.const {r0 r1 r2 r3 r4 ra rv sp}
