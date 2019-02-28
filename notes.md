@@ -13,6 +13,7 @@
 	- $6	$rv	return value
 	- $7	$sp	stack pointer (there is no frame pointer)
 
+
 - double wide - op r0, op r1 
 
 $r = $acc <--> $acc = $r
@@ -28,9 +29,7 @@ memory[$r] = $acc
 	st
 
 int to float, float to int	
-	cvt
-
-	jr 
+	cvt 
 
 ALU ops
 	$acc += $r
@@ -51,7 +50,10 @@ ALU ops
 	$acc ^= $r
 		xor
 	
-		and 
+	$acc &= $r
+		and
+		
+	$acc |= $r
 		or 
 	
 	$acc = shift($acc,$r) where $r holds an int	
@@ -61,8 +63,16 @@ ALU ops
 		slt
 
 
+pre - 8 bit register
 
-pre jp8 sys 
+$r = {pre, imm8}
+cf8 
+ci8 
 
+jump ops
 
-cf8 ci8 jnz8 jz8
+	jr
+	jnz8
+	jz8
+	jp8 
+
