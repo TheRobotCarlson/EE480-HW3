@@ -14,26 +14,55 @@
 	- $7	$sp	stack pointer (there is no frame pointer)
 
 - double wide - op r0, op r1 
-a2r 
-r2a
- 
-lf -  $r = memory[$acc]
-li 
 
-st 
-cvt 
-sh 
-slt 
-add 
-sub 
-mul 
-div 
-not 
-xor 
-and 
-or 
+$r = $acc <--> $acc = $r
+	a2r 
+	r2a
 
-jr  
+$r = memory[$acc], bit for float
+	lf  
+	li 
+	
+
+memory[$r] = $acc
+	st
+
+int to float, float to int	
+	cvt
+
+	jr 
+
+ALU ops
+	$acc += $r
+		add
+		
+	$acc -= $r
+		sub
+
+	$acc *= $r
+		mul
+
+	$acc /= $r	
+		div
+
+	$acc = (~$r)	
+		not
+
+	$acc ^= $r
+		xor
+	
+		and 
+		or 
+	
+	$acc = shift($acc,$r) where $r holds an int	
+		sh 
+
+	$acc = ($acc<$r)
+		slt
 
 
-pre jp8 sys  
+
+pre jp8 sys 
+
+
+cf8 ci8 jnz8 jz8
