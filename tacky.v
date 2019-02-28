@@ -7,7 +7,7 @@
 `define STATE	[5:0]
 
 // TODO: modify for our code
-`define REGSIZE [16:0]
+`define REGSIZE [7:0]
 `define MEMSIZE [65535:0]
 
 // 8 bit operators - PHASE 1 DECODING
@@ -45,15 +45,9 @@
 
 
 // state numbers only
-`define OPjz	`OPjzsz
-`define OPsys	5'b10000
-`define OPsz	5'b10001
-`define Start	5'b11111
-`define Start1	5'b11110
+`define Fetch	5'b11111
+`define Execute	5'b11110
 
-// source field values for sys and sz
-`define SRCsys	6'b000000
-`define SRCsz	6'b000001
 
 module processor(halt, reset, clk);
 	output reg halt;
@@ -63,31 +57,27 @@ module processor(halt, reset, clk);
 	reg `WORD mainmem `MEMSIZE;
 	reg `WORD pc = 0;
 	reg `WORD ir;
-	reg `STATE s = `Start;
+	reg `STATE s = `Fetch;
 	integer a;
 
 	always @(reset) begin
 	  halt = 0;
 	  pc = 0;
-	  s = `Start;
-	  $readmemh0(regfile);
+	  s = `Fetch;
+	  $readmemh2(regfile);
 	  $readmemh1(mainmem);
 	end
 
 	always @(posedge clk) begin
 	  case (s)
-		`Start: begin ir <= mainmem[pc]; s <= `Start1; end // load from memory
-		`Start1: begin // phase 1 decoding
-				 pc <= pc + 1;            // bump pc
-			 case (ir `Opcode)
-			 `OPjzsz:
-					case (ir `Src)	      // use Src as extended opcode
-					`SRCsys: s <= `OPsys; // sys call
-					`SRCsz: s <= `OPsz;   // sz
-					default: s <= `OPjz;  // jz
-			 endcase
-				 default: s <= ir `Opcode; // move to phase 2 decoding
-			 endcase
+		`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
+		`Execute: 
+			begin // phase 1 decoding
+				pc <= pc + 1;            // bump pc
+				case (ir `Opcode)
+			 	
+					
+			 	endcase
 			end
 		// phase 2 decoding
 		`OPadd: begin regfile[ir `Dest] <= regfile[ir `Dest] + regfile[ir `Src]; s <= `Start; end

@@ -98,7 +98,9 @@ processor
 	ci8 
 
 	jump ops
+		if ($r==0) pc = {pre, imm8}
 		jnz8
+		
 		jz8
 		jp8 
 
