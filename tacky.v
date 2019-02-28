@@ -1,12 +1,15 @@
 // basic sizes of things 
-`define WORD	[15:0]
-`define Opcode	[15:11]
-`define Opcode2 [7:3]
-`define Reg		[11:9]
-`define Imm		[8:0]
-`define STATE	[5:0]
+`define WORD	 [15:0]
+`define Opcode	 [15:11]
+`define Opcode2  [7:3]
+`define Reg		 [11:9]
+`define Reg2	 [2:0]
+`define Imm		 [7:0]
+`define STATE	 [5:0]
+`define HALFWORD [7:0]
 
 // TODO: modify for our code
+`define REGWORD [16:0]
 `define REGSIZE [7:0]
 `define MEMSIZE [65535:0]
 
@@ -53,12 +56,15 @@ module processor(halt, reset, clk);
 	output reg halt;
 	input reset, clk;
 
-	reg `WORD regfile `REGSIZE;
+	reg pre `HALFWORD;
+	reg `REGWORD regfile `REGSIZE;
 	reg `WORD mainmem `MEMSIZE;
 	reg `WORD pc = 0;
 	reg `WORD ir;
 	reg `STATE s = `Fetch;
-	integer a;
+	reg `WORD tempsrc, tempa, tempb;
+
+
 
 	always @(reset) begin
 	  halt = 0;
@@ -74,41 +80,29 @@ module processor(halt, reset, clk);
 		`Execute: 
 			begin 
 				pc <= pc + 1;            // bump pc
-				if(5'b10000 < s)
-					begin // phase 1 decoding
-						case (ir `Opcode)
-						
-						
-						endcase
-						case (ir `Opcode2)
-						
-						
-						endcase
-					end
-				else
-					begin // phase 2 decoding
-						case (ir `Opcode)
-						
-						
-						endcase
-					end
+				if(5'b10000 < s) begin // phase 1 decoding
+					case (ir `Opcode)
+					
+					
+					endcase
+					case (ir `Opcode2)
+					
+					
+					endcase
+				end
+				else begin // phase 2 decoding
+					case (ir `Opcode)
+						`OPpre: begin pre <= ir `Imm; end
+						`OPjp8: begin pc <= {pre, ir `Imm}; end
+						`OPjnz8: begin if (ir `Reg != 0) pc <= {pre, ir `Imm}; end
+						`OPjz8: begin if (ir `Reg == 0) pc <= {pre, ir `Imm}; end
+						`OPcf8: begin regfile[ir `Reg] = {1, pre, ir `Imm}; end
+						`OPci8: begin regfile[ir `Reg] = {0, pre, ir `Imm}; end
+						`OPsys: begin halt <= 1; end
+					endcase
+				end
+				s <= `Fetch;
 			end
-		// phase 2 decoding
-
-		`OPadd: begin regfile[ir `Dest] <= regfile[ir `Dest] + regfile[ir `Src]; s <= `Start; end
-		`OPand: begin regfile[ir `Dest] <= regfile[ir `Dest] & regfile[ir `Src]; s <= `Start; end
-		`OPany: begin regfile[ir `Dest] <= |regfile[ir `Src]; s <= `Start; end
-		`OPdup: begin regfile[ir `Dest] <= regfile[ir `Src]; s <= `Start; end
-		`OPjz: begin if (regfile[ir `Dest] == 0) pc <= regfile[ir `Src]; s <= `Start; end
-		`OPld: begin regfile[ir `Dest] <= mainmem[regfile[ir `Src]]; s <= `Start; end
-		`OPli: begin regfile[ir `Dest] <= mainmem[pc]; pc <= pc + 1; s <= `Start; end
-		`OPor: begin regfile[ir `Dest] <= regfile[ir `Dest] | regfile[ir `Src]; s <= `Start; end
-		`OPsz: begin if (regfile[ir `Dest] == 0) pc <= pc + 1; s <= `Start; end
-		`OPshr: begin regfile[ir `Dest] <= regfile[ir `Src] >> 1; s <= `Start; end
-		`OPst: begin mainmem[regfile[ir `Src]] <= regfile[ir `Dest]; s <= `Start; end
-		`OPxor: begin regfile[ir `Dest] <= regfile[ir `Dest] ^ regfile[ir `Src]; s <= `Start; end
-
-		default: halt <= 1;
 	  endcase
 	end
 endmodule
