@@ -12,36 +12,36 @@
 
 // 8 bit operators - PHASE 1 DECODING
 // opcode values, also state numbers
-`define OPa2r	4'b00000
-`define OPr2a	4'b00001
-`define OPlf	4'b00010
-`define OPli	4'b00011
-`define OPst	4'b00100
-`define OPcvt	4'b00101
-`define OPsh	4'b00110
-`define OPslt	4'b00111
-`define OPadd	4'b01000
-`define OPsub	4'b01001
-`define OPmul	4'b01010
-`define OPdiv	4'b01011
-`define OPnot	4'b01100
-`define OPxor	4'b01101
-`define OPand	4'b01110
-`define OPor	4'b01111
-`define OPjr	4'b10000
+`define OPa2r	5'b00000
+`define OPr2a	5'b00001
+`define OPlf	5'b00010
+`define OPli	5'b00011
+`define OPst	5'b00100
+`define OPcvt	5'b00101
+`define OPsh	5'b00110
+`define OPslt	5'b00111
+`define OPadd	5'b01000
+`define OPsub	5'b01001
+`define OPmul	5'b01010
+`define OPdiv	5'b01011
+`define OPnot	5'b01100
+`define OPxor	5'b01101
+`define OPand	5'b01110
+`define OPor	5'b01111
+`define OPjr	5'b10000
 
 // PHASE 2 DECODING
 // 13 bit + 3 bit padding: pre jp8 sys
-`define OPpre	4'b10001 // must be 17
-`define OPjp8   4'b10010
-`define OPsys   4'b10011
+`define OPpre	5'b10001 // must be 17
+`define OPjp8   5'b10010
+`define OPsys   5'b10011
 
 // 16 bit	
 // cf8 ci8 jnz8 jz8
-`define OPcf8	4'b10100
-`define OPci8	4'b10101
-`define OPjnz8	4'b10110
-`define OPjz8	4'b10111
+`define OPcf8	5'b10100
+`define OPci8	5'b10101
+`define OPjnz8	5'b10110
+`define OPjz8	5'b10111
 
 
 // state numbers only
@@ -72,14 +72,29 @@ module processor(halt, reset, clk);
 	  case (s)
 		`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
 		`Execute: 
-			begin // phase 1 decoding
+			begin 
 				pc <= pc + 1;            // bump pc
-				case (ir `Opcode)
-			 	
-					
-			 	endcase
+				if(5'b10000 < s)
+					begin // phase 1 decoding
+						case (ir `Opcode)
+						
+						
+						endcase
+						case (ir `Opcode2)
+						
+						
+						endcase
+					end
+				else
+					begin // phase 2 decoding
+						case (ir `Opcode)
+						
+						
+						endcase
+					end
 			end
 		// phase 2 decoding
+
 		`OPadd: begin regfile[ir `Dest] <= regfile[ir `Dest] + regfile[ir `Src]; s <= `Start; end
 		`OPand: begin regfile[ir `Dest] <= regfile[ir `Dest] & regfile[ir `Src]; s <= `Start; end
 		`OPany: begin regfile[ir `Dest] <= |regfile[ir `Src]; s <= `Start; end
