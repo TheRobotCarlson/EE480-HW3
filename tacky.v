@@ -67,20 +67,32 @@ module processor(halt, reset, clk);
 	reg `WORD f_add_l, f_add_r;
 	reg `WORD f_sub_l, f_sub_r;
 	reg `WORD f_mul_l, f_mul_r;
-	reg `WORD f_div_l, f_div_r;
+	reg `WORD f_recip_l, f_recip_r;
+	reg `WORD f_shift_l, f_shift_r;
+	//reg `WORD f_div_l, f_div_r; used 
 
 
 	// Float module instantiation
 	// Add
-	fadd fadd_left(f_add_l, regfile[0] `Word, regfile[ir `Reg] `Word);
-	fadd fadd_right(f_add_r, regfile[1] `Word, regfile[ir `Reg2] `Word);
+	fadd fadd_left(f_add_l, regfile[0] `WORD, regfile[ir `Reg] `WORD);
+	fadd fadd_right(f_add_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
 	// Sub (flip register value's MSB to change sign and then add)
-	fadd fsub_left(f_sub_l, regfile[0] `Word, (regfile[ir `Reg] `Word)^16`h8000);
-	fadd fsub_right(f_sub_r, regfile[1] `Word, (regfile[ir `Reg2] `Word)^16`h8000);
+	fadd fsub_left(f_sub_l, regfile[0] `WORD, (regfile[ir `Reg] `WORD)^16`h8000);
+	fadd fsub_right(f_sub_r, regfile[1] `WORD, (regfile[ir `Reg2] `WORD)^16`h8000);
 	// Mul
-	fmul fmul_left(f_mul_l, regfile[0] `Word, regfile[ir `Reg] `Word);
-	fmul fmul_right(f_mul_r, regfile[1] `Word, regfile[ir `Reg2] `Word);
-	// TODO: div (recip then mul)
+	fmul fmul_left(f_mul_l, regfile[0] `WORD, regfile[ir `Reg] `WORD);
+	fmul fmul_right(f_mul_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
+	// div (recip then mul)
+		//reciprication step
+	frecip frecip_left(f_recip_1, regfile[0] `WORD, regfile[ir `Reg] `WORD);
+	frecip frecip_right(f_recip_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
+		//multiplication step
+	fmul fmul_left(f_mul_r, regfile[0] `WORD, regfile[ir `Reg] `WORD);
+	fmul fmul_right(f_mul_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
+	//shift
+	fshift fshift_left(f_shift_l, regfile[0] `WORD, regfile[ir `Reg] `WORD );
+	fshift fshift_right(f_shift_r, regfile[0] `WORD, regfile[ir `Reg] `WORD );
+
 
 
 
@@ -102,22 +114,22 @@ module processor(halt, reset, clk);
 					case (ir `Opcode)
 					`OPa2r: begin regfile[ir `Reg] <= regfile[0]; end
 					`OPr2a: begin regfile[0] <= regfile[ir `Reg]; end
-					`OPjr: begin pc <= regfile[ir `Reg] `Word; end
-					`OPst:
-					`OPlf: 
-					`OPli:
+					`OPjr: begin pc <= regfile[ir `Reg] `WORD; end
+					`OPst: begin mainmem[regfile[ir `Src]] <= regfile[0]; end //to check
+					`OPlf: begin regfile[ir `Reg] <= mainmem[pc]; end //to check
+					`OPli: begin regfile[ir `Reg] <= mainmem[pc]; end //to check
 					// ALU
-					`OPcvt:
-					`OPsh:
-					`OPslt:
-					`OPadd: begin regfile[0] `WORD <= regfile[0][16] ? f_add_l : regfile[0]+regfile[ir `Reg] end
-					`OPsub:	begin regfile[0] `WORD <= regfile[0][16] ? f_sub_l : regfile[0]-regfile[ir `Reg] end
-					`OPmul: begin regfile[0] `WORD <= regfile[0][16] ? f_mul_l : regfile[0]*regfile[ir `Reg] end
-					`OPdiv:
-					`OPnot:
-					`OPxor:
-					`OPand:
-					`OPor:
+					`OPcvt: 
+					`OPslt: 
+					`OPsh:  begin regfile[0] `WORD <= regfile[0][16] ? f_shift_1 : regfile[0]+regfile[ir `Reg]; end
+					`OPadd: begin regfile[0] `WORD <= regfile[0][16] ? f_add_l : regfile[0]+regfile[ir `Reg]; end
+					`OPsub:	begin regfile[0] `WORD <= regfile[0][16] ? f_sub_l : regfile[0]-regfile[ir `Reg]; end
+					`OPmul: begin regfile[0] `WORD <= regfile[0][16] ? f_mul_l : regfile[0]*regfile[ir `Reg]; end
+					`OPdiv: begin regfile[0] `WORD <= regfile[0][16] ? f_recip_l  /*add mul here?*/: regfile[0]/regfile[ir `Reg]; end
+					`OPnot: begin regfile[0] `WORD <= ~(regfile[0] `WORD); end
+					`OPxor: begin regfile[0] `WORD <= regfile[0] `WORD ^ regfile[ir `Reg]; end
+					`OPand: begin regfile[0] `WORD <= regfile[0] `WORD & regfile[ir `Reg]; end
+					`OPor: begin regfile[0] `WORD <= regfile[0] `WORD | regfile[ir `Reg]; end
 
 					
 					endcase
