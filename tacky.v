@@ -63,6 +63,26 @@ module processor(halt, reset, clk);
 	reg `STATE s = `Fetch;
 	reg `WORD tempsrc, tempa, tempb;
 
+	// Float module destinations
+	reg `WORD f_add_l, f_add_r;
+	reg `WORD f_sub_l, f_sub_r;
+	reg `WORD f_mul_l, f_mul_r;
+	reg `WORD f_div_l, f_div_r;
+
+
+	// Float module instantiation
+	// Add
+	fadd fadd_left(f_add_l, regfile[0] `Word, regfile[ir `Reg] `Word);
+	fadd fadd_right(f_add_r, regfile[1] `Word, regfile[ir `Reg2] `Word);
+	// Sub (flip register value's MSB to change sign and then add)
+	fadd fsub_left(f_sub_l, regfile[0] `Word, (regfile[ir `Reg] `Word)^16`h8000);
+	fadd fsub_right(f_sub_r, regfile[1] `Word, (regfile[ir `Reg2] `Word)^16`h8000);
+	// Mul
+	fmul fmul_left(f_mul_l, regfile[0] `Word, regfile[ir `Reg] `Word);
+	fmul fmul_right(f_mul_r, regfile[1] `Word, regfile[ir `Reg2] `Word);
+	// TODO: div (recip then mul)
+
+
 
 	always @(reset) begin
 	  halt = 0;
@@ -90,9 +110,9 @@ module processor(halt, reset, clk);
 					`OPcvt:
 					`OPsh:
 					`OPslt:
-					`OPadd:
-					`OPsub:
-					`OPmul:
+					`OPadd: begin regfile[0] `WORD <= regfile[0][16] ? f_add_l : regfile[0]+regfile[ir `Reg] end
+					`OPsub:	begin regfile[0] `WORD <= regfile[0][16] ? f_sub_l : regfile[0]-regfile[ir `Reg] end
+					`OPmul: begin regfile[0] `WORD <= regfile[0][16] ? f_mul_l : regfile[0]*regfile[ir `Reg] end
 					`OPdiv:
 					`OPnot:
 					`OPxor:
