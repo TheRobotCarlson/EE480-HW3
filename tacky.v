@@ -52,37 +52,30 @@
 `define Fetch	5'b11111
 `define Execute	5'b11110
 
-module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, acc);
-	input reg pre `HALFWORD;
+module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, pre, acc);
 	input reg `REGWORD regfile `REGSIZE;
 	input reg `WORD mainmem `MEMSIZE;
-	input reg `WORD pc = 0;
+	input reg `WORD pc; 
+	input clock;
+	input reg `OPBITS opcode;
+	input reg `REGBTIS regloc;
+	input reg pre `HALFWORD; // Why is this an array?
 	input reg `REGBITS acc; // Which accumulator to use
-
+	
 	// Float module destinations
-	reg `WORD f_add;
-	reg `WORD f_sub;
-	reg `WORD f_mul;
-	reg `WORD f_recip;
-	reg `WORD f_shift;
-	reg `WORD f_div;
-	reg `WORD f_f2i;
-	reg `WORD f_i2f;
+	reg `WORD f_add, f_sub, f_mul, f_div;
+	reg `WORD f_recip, f_shift, f_f2i, f_i2f;
 
 	// Float module instantiation
 	// add
 	fadd fadd_inst(f_add, regfile[acc] `WORD, regfile[regloc] `WORD);
-
 	// sub (flip register value's MSB to change sign and then add)
 	fadd fsub_inst(f_sub, regfile[acc] `WORD, (regfile[regloc] `WORD)^16`h8000);
-
 	// mul
 	fmul fmul_inst(f_mul, regfile[acc] `WORD, regfile[regloc] `WORD);
-
 	// div (recip then mul)
 	frecip frecip_inst(f_recip, regfile[acc] `WORD);
 	fmul fdiv_inst(f_div, f_recip, regfile[regloc] `WORD);
-
 	// shift
 	fshift fshift_inst(f_shift, regfile[acc] `WORD, regfile[regloc] `WORD);
 	// f2i
@@ -131,7 +124,7 @@ module processor(halt, reset, clk);
 	output reg halt;
 	input reset, clk;
 
-	reg pre `HALFWORD;
+	reg pre `HALFWORD; // Why is this an array?
 	reg `REGWORD regfile `REGSIZE;
 	reg `WORD mainmem `MEMSIZE;
 	reg `WORD pc = 0;
@@ -141,8 +134,8 @@ module processor(halt, reset, clk);
 	reg `OPBITS opcode1, opcode2;
 
 	// Float module instantiation
-	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, 3`b000);
-	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, 3`b001);
+	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, pre, 3`b000);
+	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, pre, 3`b001);
 
 	always @(reset) begin
 		halt = 0;
@@ -157,12 +150,12 @@ module processor(halt, reset, clk);
 			`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
 			`Execute: 
 				begin 
-					pc <= pc + 1;            // bump pc
+					pc <= pc + 1; // bump pc
 					opcode1 = ir `Opcode;
 					opcode2 = ir `Opcode2;
 					reg1 = ir `reg1;
 					reg2 = ir `reg2;
-					if(5'b10000 < opcode1) begin  // phase 2 decoding
+					if(5'b10000 < opcode1) begin // phase 2 decoding
 						case (ir `Opcode)
 							`OPpre: begin pre <= ir `Imm; end
 							`OPjp8: begin pc <= {pre, ir `Imm}; end
