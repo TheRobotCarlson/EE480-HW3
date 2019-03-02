@@ -11,6 +11,7 @@
 // TODO: modify for our code
 `define REGWORD [16:0]
 `define REGSIZE [7:0]
+`define REGBITS [2:0]
 `define MEMSIZE [65535:0]
 
 // 8 bit operators - PHASE 1 DECODING
@@ -51,39 +52,39 @@
 `define Execute	5'b11110
 
 
-module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc);
-	parameter acc = 0;
+module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, acc);
 	input reg pre `HALFWORD;
 	input reg `REGWORD regfile `REGSIZE;
 	input reg `WORD mainmem `MEMSIZE;
 	input reg `WORD pc = 0;
+	input reg `REGBITS acc; // Which accumulator to use
 
-		// Float module destinations
+	// Float module destinations
 	reg `WORD f_add;
 	reg `WORD f_sub;
 	reg `WORD f_mul;
 	reg `WORD f_recip;
 	reg `WORD f_shift;
 	reg `WORD f_div;
-	reg `WORD f_f2ir;
+	reg `WORD f_f2i;
 	reg `WORD f_i2f;
 
 	// Float module instantiation
 	// add
-	fadd fadd_inst(f_add, regfile[ACC] `WORD, regfile[regloc] `WORD);
+	fadd fadd_inst(f_add, regfile[acc] `WORD, regfile[regloc] `WORD);
 
 	// sub (flip register value's MSB to change sign and then add)
-	fadd fsub_inst(f_sub, regfile[ACC] `WORD, (regfile[regloc] `WORD)^16`h8000);
+	fadd fsub_inst(f_sub, regfile[acc] `WORD, (regfile[regloc] `WORD)^16`h8000);
 
 	// mul
-	fmul fmul_inst(f_mul, regfile[ACC] `WORD, regfile[regloc] `WORD);
+	fmul fmul_inst(f_mul, regfile[acc] `WORD, regfile[regloc] `WORD);
 
 	// div (recip then mul)
-	frecip frecip_inst(f_recip, regfile[ACC] `WORD);
+	frecip frecip_inst(f_recip, regfile[acc] `WORD);
 	fmul fdiv_inst(f_div, f_recip, regfile[regloc] `WORD);
 
 	// shift
-	fshift fshift_inst(f_shift, regfile[ACC] `WORD, regfile[regloc] `WORD);
+	fshift fshift_inst(f_shift, regfile[acc] `WORD, regfile[regloc] `WORD);
 	// f2i
 	f2i ff2i_inst(f_f2i, regfile[regloc] `WORD);
 	// i2f
@@ -140,8 +141,8 @@ module processor(halt, reset, clk);
 	reg [4:0] opcode1, opcode2;
 
 	// Float module instantiation
-	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1);
-	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2);
+	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, 3`b000);
+	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, 3`b001);
 
 	always @(reset) begin
 	  halt = 0;
