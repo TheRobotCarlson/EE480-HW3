@@ -12,6 +12,7 @@
 `define REGWORD [16:0]
 `define REGSIZE [7:0]
 `define REGBITS [2:0]
+`define OPBITS  [4:0]
 `define MEMSIZE [65535:0]
 
 // 8 bit operators - PHASE 1 DECODING
@@ -50,7 +51,6 @@
 // state numbers only
 `define Fetch	5'b11111
 `define Execute	5'b11110
-
 
 module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, acc);
 	input reg pre `HALFWORD;
@@ -137,45 +137,45 @@ module processor(halt, reset, clk);
 	reg `WORD pc = 0;
 	reg `WORD ir;
 	reg `STATE s = `Fetch;
-	reg [2:0] reg1, reg2;
-	reg [4:0] opcode1, opcode2;
+	reg `REGBITS reg1, reg2;
+	reg `OPBITS opcode1, opcode2;
 
 	// Float module instantiation
 	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, 3`b000);
 	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, 3`b001);
 
 	always @(reset) begin
-	  halt = 0;
-	  pc = 0;
-	  s = `Fetch;
-	  $readmemh2(regfile);
-	  $readmemh1(mainmem);
+		halt = 0;
+		pc = 0;
+		s = `Fetch;
+		$readmemh2(regfile);
+		$readmemh1(mainmem);
 	end
 
 	always @(posedge clk) begin
-	  case (s)
-		`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
-		`Execute: 
-			begin 
-				pc <= pc + 1;            // bump pc
-				opcode1 = ir `Opcode;
-				opcode2 = ir `Opcode2;
-				reg1 = ir `reg1;
-				reg2 = ir `reg2;
-				if(5'b10000 < opcode1) begin  // phase 2 decoding
-					case (ir `Opcode)
-						`OPpre: begin pre <= ir `Imm; end
-						`OPjp8: begin pc <= {pre, ir `Imm}; end
-						`OPjnz8: begin if (ir `Reg != 0) pc <= {pre, ir `Imm}; end
-						`OPjz8: begin if (ir `Reg == 0) pc <= {pre, ir `Imm}; end
-						`OPcf8: begin regfile[ir `Reg] = {1, pre, ir `Imm}; end
-						`OPci8: begin regfile[ir `Reg] = {0, pre, ir `Imm}; end
-						`OPsys: begin halt <= 1; end
-					endcase
+		case (s)
+			`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
+			`Execute: 
+				begin 
+					pc <= pc + 1;            // bump pc
+					opcode1 = ir `Opcode;
+					opcode2 = ir `Opcode2;
+					reg1 = ir `reg1;
+					reg2 = ir `reg2;
+					if(5'b10000 < opcode1) begin  // phase 2 decoding
+						case (ir `Opcode)
+							`OPpre: begin pre <= ir `Imm; end
+							`OPjp8: begin pc <= {pre, ir `Imm}; end
+							`OPjnz8: begin if (ir `Reg != 0) pc <= {pre, ir `Imm}; end
+							`OPjz8: begin if (ir `Reg == 0) pc <= {pre, ir `Imm}; end
+							`OPcf8: begin regfile[ir `Reg] = {1, pre, ir `Imm}; end
+							`OPci8: begin regfile[ir `Reg] = {0, pre, ir `Imm}; end
+							`OPsys: begin halt <= 1; end
+						endcase
+					end
+					s <= `Fetch;
 				end
-				s <= `Fetch;
-			end
-	  endcase
+		endcase
 	end
 endmodule
 
