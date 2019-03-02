@@ -1,0 +1,57 @@
+;----------TEST 1---------
+;Basic arithmetic and logic functions on ints
+	.text
+	.origin	0x0000
+start:	
+	pre 0x00		;assigns 0x00 to the upper 8 hex digits of the int
+	ci8 $r0, 0x00		;load 0x0003 into r0
+	ci8 $r1, 0x01		;load 0x0004 into r1
+	ci8 $r2, 0x02		;load 0x0005 into r2
+	ci8 $r3, 0x03		;load 0x0004 into r3
+	ci8 $r4, 0xff		;load in b00001111 for logic
+	add $r2, sub $r3	;expected value: r0 = 0x0002 & r1 = 0x0004
+	mul $r3, div $r2	;expected value: r0 = 0x0006 & r1 = 0x0002
+	and $r4, or $r4		;expected value: r0 = 0x0006 & r1 = 0x00ff
+	not $r1, xor $r2	;expected value: r0 = 0x00fe & r1 = 0x00fd
+	sh  $r2, and $r4	;expected value: r0 = 0x03f8 & r1 = 0x00fd
+	st  $r0, st  $r1	;store both values to see output
+
+
+;----------Test 2----------
+;Basic arithmetic and logic on floats
+	.text
+	.origin	0x0000
+start:	
+	pre 0x3f
+	cf8  $r0, 0xc0		;load 1.5 = 0x3fc0 into r0
+	pre 0x41
+	cf8 $r1, 0x90		;load 18.1 = 0x4190 into r1
+	pre 0x40
+	cf8 $r2, 0x40		;load 3.0 = 0x4040 into r2
+	pre 0x40
+	cf8 $r3, 0xc3		;load 6.1 into r3
+	pre 0x00
+	cf8 $r4, 0x00		;load 0.0 into r4
+	add $r2, sub $r3	;r0 = 1.5 + 3.0 r1 = 18.1 - 6.1
+	mul $r3, div $r2	;r0 = r0 * 6.1  r1 = r1 / 3.0
+	str $r0, str $r1	;store registers
+	lf  $r1, lf  $r0	;load opposite reg values
+;	and $r4, or $r4		;random 
+;	not $r1, xor $r2	;	
+
+
+;----------TEST 3----------	
+;tests non-arithmetic functionality
+	.text
+	.origin	0x0000
+start:	
+	pre 0x00		;assigns 0x00 to the upper 8 hex digits of the int
+	ci8 $r0, 0x00		;load 0x0003 into r0
+	ci8 $r1, 0x01		;load 0x0004 into r1
+	ci8 $r2, 0x02		;load 0x0005 into r2
+	ci8 $r3, 0x03		;load 0x0004 into r3
+	ci8 $r4, 0xff		;load in b00001111 for logic
+	r2a $r2, a2r $r3	;r0 = r2 ;r3 = r1
+	st $r2, cvt $r3		;store r0 in mem[r2]; convert r3 into float
+	slt $r4, cvt $r1	;r0 = (r0<r4) ; convert r1 into int (equal to r3 now)
+;TODO: jumping stuff
