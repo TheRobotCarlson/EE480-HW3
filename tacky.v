@@ -51,6 +51,74 @@
 `define Execute	5'b11110
 
 
+module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc);
+	parameter ACC = 0;
+	input reg pre `HALFWORD;
+	input reg `REGWORD regfile `REGSIZE;
+	input reg `WORD mainmem `MEMSIZE;
+	input reg `WORD pc = 0;
+
+		// Float module destinations
+	reg `WORD f_add;
+	reg `WORD f_sub;
+	reg `WORD f_mul;
+	reg `WORD f_recip;
+	reg `WORD f_shift;
+	reg `WORD f_div;
+	reg `WORD f_f2ir;
+	reg `WORD f_i2f;
+
+	// Float module instantiation
+	// add
+	fadd fadd_inst(f_add, regfile[ACC] `WORD, regfile[regloc] `WORD);
+
+	// sub (flip register value's MSB to change sign and then add)
+	fadd fsub_inst(f_sub, regfile[ACC] `WORD, (regfile[regloc] `WORD)^16`h8000);
+
+	// mul
+	fmul fmul_inst(f_mul, regfile[ACC] `WORD, regfile[regloc] `WORD);
+
+	// div (recip then mul)
+	frecip frecip_inst(f_recip, regfile[ACC] `WORD);
+	fmul fdiv_inst(f_div, f_recip, regfile[regloc] `WORD);
+
+	// shift
+	fshift fshift_inst(f_shift, regfile[ACC] `WORD, regfile[regloc] `WORD);
+	// f2i
+	f2i ff2i_inst(f_f2i, regfile[regloc] `WORD);
+	// i2f
+	f2i fi2f_inst(f_i2f, regfile[regloc] `WORD);
+
+	always @(posedge trigger) begin
+		if(5'b10000 > opcode) begin // phase 1 decoding
+			case (opcode)
+				`OPa2r: begin regfile[regloc] <= regfile[0]; end
+				`OPr2a: begin regfile[0] <= regfile[regloc]; end
+				`OPjr: begin pc <= regfile[regloc] `WORD; end
+				`OPst: begin mainmem[regfile[regloc] `WORD ] <= regfile[0]; end //to check
+				`OPlf: begin regfile[regloc] <= {1, mainmem[pc]}; end // to check, set 1 for float
+				`OPli: begin regfile[regloc] <= {0, mainmem[pc]}; end //to check PC increment, set 0 for int
+				// ALU
+				`OPcvt: begin
+					regfile[0] `WORD <= regfile[regloc][16] ? f_f2i : f_i2f;
+					regfile[0][16] <= regfile[0][16]^1`b1; // Flip register type
+				end
+				`OPslt: 
+				`OPsh:  begin regfile[0] `WORD <= regfile[0][16] ? f_shift : regfile[0]<<regfile[regloc]; end
+				`OPadd: begin regfile[0] `WORD <= regfile[0][16] ? f_add : regfile[0]+regfile[regloc]; end
+				`OPsub:	begin regfile[0] `WORD <= regfile[0][16] ? f_sub : regfile[0]-regfile[regloc]; end
+				`OPmul: begin regfile[0] `WORD <= regfile[0][16] ? f_mul : regfile[0]*regfile[regloc]; end
+				`OPdiv: begin regfile[0] `WORD <= regfile[0][16] ? f_div : regfile[0]/regfile[regloc]; end
+				`OPnot: begin regfile[0] `WORD <= ~(regfile[regloc]); end
+				`OPxor: begin regfile[0] `WORD <= regfile[0] ^ regfile[regloc]; end
+				`OPand: begin regfile[0] `WORD <= regfile[0] & regfile[regloc]; end
+				`OPor:  begin regfile[0] `WORD <= regfile[0] | regfile[regloc]; end
+			endcase
+		end
+	end
+	
+endmodule
+
 module processor(halt, reset, clk);
 	output reg halt;
 	input reset, clk;
@@ -61,43 +129,12 @@ module processor(halt, reset, clk);
 	reg `WORD pc = 0;
 	reg `WORD ir;
 	reg `STATE s = `Fetch;
-	reg `WORD tempsrc, tempa, tempb;
-
-	// Float module destinations
-	reg `WORD f_add_l, f_add_r;
-	reg `WORD f_sub_l, f_sub_r;
-	reg `WORD f_mul_l, f_mul_r;
-	reg `WORD f_recip_l, f_recip_r;
-	reg `WORD f_shift_l, f_shift_r;
-	reg `WORD f_div_l, f_div_r;
-	reg `WORD f_f2i_l, f_f2i_r;
-	reg `WORD f_i2f_l, f_i2f_r;
+	reg [2:0] reg1, reg2;
+	reg [4:0] opcode1, opcode2;
 
 	// Float module instantiation
-	// add
-	fadd fadd_left(f_add_l, regfile[0] `WORD, regfile[ir `Reg] `WORD);
-	fadd fadd_right(f_add_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
-	// sub (flip register value's MSB to change sign and then add)
-	fadd fsub_left(f_sub_l, regfile[0] `WORD, (regfile[ir `Reg] `WORD)^16`h8000);
-	fadd fsub_right(f_sub_r, regfile[1] `WORD, (regfile[ir `Reg2] `WORD)^16`h8000);
-	// mul
-	fmul fmul_left(f_mul_l, regfile[0] `WORD, regfile[ir `Reg] `WORD);
-	fmul fmul_right(f_mul_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
-	// div (recip then mul)
-	frecip frecip_left(f_recip_1, regfile[0] `WORD);
-	frecip frecip_right(f_recip_r, regfile[1] `WORD);
-	fmul fdiv_left(f_div_l, f_recip_l, regfile[ir `Reg] `WORD);
-	fmul fdiv_right(f_div_r, f_recip_r, regfile[ir `Reg2] `WORD);
-	// shift
-	fshift fshift_left(f_shift_l, regfile[0] `WORD, regfile[ir `Reg] `WORD);
-	fshift fshift_right(f_shift_r, regfile[1] `WORD, regfile[ir `Reg2] `WORD);
-	// f2i
-	f2i ff2i_left(f_f2i_l, regfile[ir `Reg] `WORD);
-	f2i ff2i_right(f_f2i_r, regfile[ir `Reg2] `WORD);
-	// i2f
-	f2i fi2f_left(f_i2f_l, regfile[ir `Reg] `WORD);
-	f2i fi2f_right(f_i2f_r, regfile[ir `Reg2] `WORD);
-
+	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1);
+	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2);
 
 	always @(reset) begin
 	  halt = 0;
@@ -113,57 +150,11 @@ module processor(halt, reset, clk);
 		`Execute: 
 			begin 
 				pc <= pc + 1;            // bump pc
-				if(5'b10000 < s) begin // phase 1 decoding
-					// Left VLIW Instruction
-					case (ir `Opcode)
-						`OPa2r: begin regfile[ir `Reg] <= regfile[0]; end
-						`OPr2a: begin regfile[0] <= regfile[ir `Reg]; end
-						`OPjr: begin pc <= regfile[ir `Reg] `WORD; end
-						`OPst: begin mainmem[regfile[ir `Src]] <= regfile[0]; end //to check
-						`OPlf: begin regfile[ir `Reg] <= mainmem[pc]; end //to check
-						`OPli: begin regfile[ir `Reg] <= mainmem[pc]; end //to check PC increment
-						// ALU
-						`OPcvt: begin
-							regfile[0] `WORD <= regfile[ir `Reg][16] ? f_f2i_l : f_i2f_l;
-							regfile[0][16] <= regfile[0][16]^1`b1; // Flip register type
-						end
-						`OPslt: 
-						`OPsh:  begin regfile[0] `WORD <= regfile[0][16] ? f_shift_l : regfile[0]<<regfile[ir `Reg]; end
-						`OPadd: begin regfile[0] `WORD <= regfile[0][16] ? f_add_l : regfile[0]+regfile[ir `Reg]; end
-						`OPsub:	begin regfile[0] `WORD <= regfile[0][16] ? f_sub_l : regfile[0]-regfile[ir `Reg]; end
-						`OPmul: begin regfile[0] `WORD <= regfile[0][16] ? f_mul_l : regfile[0]*regfile[ir `Reg]; end
-						`OPdiv: begin regfile[0] `WORD <= regfile[0][16] ? f_div_l : regfile[0]/regfile[ir `Reg]; end
-						`OPnot: begin regfile[0] `WORD <= ~(regfile[ir `Reg]); end
-						`OPxor: begin regfile[0] `WORD <= regfile[0] ^ regfile[ir `Reg]; end
-						`OPand: begin regfile[0] `WORD <= regfile[0] & regfile[ir `Reg]; end
-						`OPor:  begin regfile[0] `WORD <= regfile[0] | regfile[ir `Reg]; end
-					endcase
-					// Right VLIW Instruction
-					case (ir `Opcode2)
-						`OPa2r: begin regfile[ir `Reg2] <= regfile[1]; end
-						`OPr2a: begin regfile[1] <= regfile[ir `Reg2]; end
-						`OPjr: begin pc <= regfile[ir `Reg2] `WORD; end
-						`OPst: begin mainmem[regfile[ir `Src]] <= regfile[1]; end //to check
-						`OPlf: begin regfile[ir `Reg2] <= mainmem[pc]; end //to check
-						`OPli: begin regfile[ir `Reg2] <= mainmem[pc]; end //to check PC increment
-						// ALU
-						`OPcvt: begin
-							regfile[1] `WORD <= regfile[ir `Reg2][16] ? f_f2i_r : f_i2f_r;
-							regfile[1][16] <= regfile[1][16]^1`b1; // Flip register type
-						end
-						`OPslt: 
-						`OPsh:  begin regfile[1] `WORD <= regfile[1][16] ? f_shift_r : regfile[1]<<regfile[ir `Reg2]; end
-						`OPadd: begin regfile[1] `WORD <= regfile[1][16] ? f_add_r : regfile[1]+regfile[ir `Reg2]; end
-						`OPsub:	begin regfile[1] `WORD <= regfile[1][16] ? f_sub_r : regfile[1]-regfile[ir `Reg2]; end
-						`OPmul: begin regfile[1] `WORD <= regfile[1][16] ? f_mul_r : regfile[1]*regfile[ir `Reg2]; end
-						`OPdiv: begin regfile[1] `WORD <= regfile[1][16] ? f_div_r : regfile[1]/regfile[ir `Reg2]; end
-						`OPnot: begin regfile[1] `WORD <= ~(regfile[ir `Reg2]); end
-						`OPxor: begin regfile[1] `WORD <= regfile[1] ^ regfile[ir `Reg2]; end
-						`OPand: begin regfile[1] `WORD <= regfile[1] & regfile[ir `Reg2]; end
-						`OPor:  begin regfile[1] `WORD <= regfile[1] | regfile[ir `Reg2]; end
-					endcase
-				end
-				else begin // phase 2 decoding
+				opcode1 = ir `Opcode;
+				opcode2 = ir `Opcode2;
+				reg1 = ir `reg1;
+				reg2 = ir `reg2;
+				if(5'b10000 < opcode1) begin  // phase 2 decoding
 					case (ir `Opcode)
 						`OPpre: begin pre <= ir `Imm; end
 						`OPjp8: begin pc <= {pre, ir `Imm}; end
