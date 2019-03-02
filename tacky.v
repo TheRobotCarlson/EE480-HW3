@@ -1,12 +1,12 @@
-// basic sizes of things 
-`define WORD	 [15:0]
-`define Opcode	 [15:11]
-`define Opcode2  [7:3]
-`define Reg		 [11:9]
-`define Reg2	 [2:0]
-`define Imm		 [7:0]
-`define STATE	 [5:0]
-`define HALFWORD [7:0]
+// basic sizes and locations of things
+`define WORD	 [15:0] // Size of word
+`define HALFWORD [7:0] // Size of halfword
+`define Opcode	 [15:11] // Standard opcode location
+`define Opcode2  [7:3] // VLIW right instruction opcode location
+`define Reg		 [11:9] // Standard register location
+`define Reg2	 [2:0] // VLIW right instruction register location
+`define Imm		 [7:0] // Immediate value location
+`define STATE	 [5:0] // Current state
 
 // TODO: modify for our code
 `define REGWORD [16:0]
@@ -133,10 +133,11 @@ module processor(halt, reset, clk);
 	reg `REGBITS reg1, reg2;
 	reg `OPBITS opcode1, opcode2;
 
-	// Float module instantiation
+	// ALU module instantiations
 	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, pre, 3`b000);
 	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, pre, 3`b001);
 
+	// Processor reset
 	always @(reset) begin
 		halt = 0;
 		pc = 0;
@@ -145,10 +146,11 @@ module processor(halt, reset, clk);
 		$readmemh1(mainmem);
 	end
 
+	// Main processor loop
 	always @(posedge clk) begin
 		case (s)
-			`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
-			`Execute: 
+			`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // IF State: load instruction and set next state to Execution
+			`Execute: // EX State
 				begin 
 					pc <= pc + 1; // bump pc
 					opcode1 = ir `Opcode;
@@ -166,25 +168,29 @@ module processor(halt, reset, clk);
 							`OPsys: begin halt <= 1; end
 						endcase
 					end
-					s <= `Fetch;
+					s <= `Fetch; // Set next state to fetch
 				end
 		endcase
 	end
 endmodule
 
+
+
+
+
+// ************************************* FLOAT MODULES *************************************
 // Floating point Verilog modules for CPE480
 // Created February 19, 2019 by Henry Dietz, http://aggregate.org/hankd
 // Distributed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
 
-// Field definitions
-`define	WORD	[15:0]	// generic machine word size
+// Float field definitions
 `define	INT	signed [15:0]	// integer size
 `define FLOAT	[15:0]	// half-precision float size
 `define FSIGN	[15]	// sign bit
 `define FEXP	[14:7]	// exponent
 `define FFRAC	[6:0]	// fractional part (leading 1 implied)
 
-// Constants
+// Float Constants
 `define	FZERO	16'b0	  // float 0
 `define F32767  16'h46ff  // closest approx to 32767, actually 32640
 `define F32768  16'hc700  // -32768
