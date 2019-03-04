@@ -53,13 +53,13 @@
 `define Execute	5'b11110
 
 module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, pre, acc);
-	input reg `REGWORD regfile `REGSIZE;
-	input reg `WORD mainmem `MEMSIZE;
-	input reg `WORD pc; 
+	output reg `REGWORD regfile `REGSIZE;
+	output reg `WORD mainmem `MEMSIZE;
+	output reg `WORD pc;
 	input clock;
 	input reg `OPBITS opcode;
-	input reg `REGBTIS regloc;
-	input reg pre `HALFWORD; // Why is this an array?
+	input reg `REGBTIS regloc; // Source register
+	input reg `HALFWORD pre;
 	input reg `REGBITS acc; // Which accumulator to use
 	
 	// Float module destinations
@@ -124,7 +124,7 @@ module processor(halt, reset, clk);
 	output reg halt;
 	input reset, clk;
 
-	reg pre `HALFWORD; // Why is this an array?
+	reg `HALFWORD pre;
 	reg `REGWORD regfile `REGSIZE;
 	reg `WORD mainmem `MEMSIZE;
 	reg `WORD pc = 0;
