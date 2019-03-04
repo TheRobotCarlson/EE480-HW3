@@ -53,14 +53,14 @@
 `define Execute	5'b11110
 
 module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, pre, acc);
-	output reg `REGWORD regfile `REGSIZE;
-	output reg `WORD mainmem `MEMSIZE;
-	output reg `WORD pc;
+	output `REGWORD regfile `REGSIZE;
+	output `WORD mainmem `MEMSIZE;
+	output `WORD pc;
 	input clock;
-	input reg `OPBITS opcode;
-	input reg `REGBTIS regloc; // Source register
-	input reg `HALFWORD pre;
-	input reg `REGBITS acc; // Which accumulator to use
+	input `OPBITS opcode;
+	input `REGBITS regloc; // Source register
+	input `HALFWORD pre;
+	input `REGBITS acc; // Which accumulator to use
 	
 	// Float module destinations
 	reg `WORD f_add, f_sub, f_mul, f_div;
@@ -70,7 +70,7 @@ module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, pre, acc);
 	// add
 	fadd fadd_inst(f_add, regfile[acc] `WORD, regfile[regloc] `WORD);
 	// sub (flip register value's MSB to change sign and then add)
-	fadd fsub_inst(f_sub, regfile[acc] `WORD, (regfile[regloc] `WORD)^16`h8000);
+	fadd fsub_inst(f_sub, regfile[acc] `WORD, (regfile[regloc] `WORD)^16'h8000);
 	// mul
 	fmul fmul_inst(f_mul, regfile[acc] `WORD, regfile[regloc] `WORD);
 	// div (recip then mul)
@@ -104,15 +104,15 @@ module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, pre, acc);
 				`OPor:  begin regfile[acc] `WORD <= regfile[acc] | regfile[regloc]; end
 				`OPcvt: begin
 					regfile[acc] `WORD <= regfile[regloc][16] ? f_f2i : f_i2f;
-					regfile[acc][16] <= regfile[acc][16]^1`b1; // Flip register type
+					regfile[acc][16] <= regfile[acc][16]^1'b1; // Flip register type
 				end
 				`OPslt: begin
 					if(regfile[regloc][16]) begin // Use float slt
 						regfile[acc] `WORD <= f_slt_l;
-						regfile[acc][16] <= 0`b1; // Set acc type to int
+						regfile[acc][16] <= 0'b1; // Set acc type to int
 					end else begin // User int slt
 						regfile[acc] `WORD <= regfile[acc] < regfile[ir `Reg];
-						regfile[acc][16] <= 0`b1; // Set acc type to int
+						regfile[acc][16] <= 0'b1; // Set acc type to int
 					end
 				end
 			endcase
@@ -134,8 +134,8 @@ module processor(halt, reset, clk);
 	reg `OPBITS opcode1, opcode2;
 
 	// ALU module instantiations
-	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, pre, 3`b000);
-	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, pre, 3`b001);
+	phase_1_alu #(0) alu_l(regfile, mainmem, pc, clk, opcode1, reg1, pre, 3'b000);
+	phase_1_alu #(1) alu_r(regfile, mainmem, pc, clk, opcode2, reg2, pre, 3'b001);
 
 	// Processor reset
 	always @(reset) begin
@@ -155,8 +155,8 @@ module processor(halt, reset, clk);
 					pc <= pc + 1; // bump pc
 					opcode1 = ir `Opcode;
 					opcode2 = ir `Opcode2;
-					reg1 = ir `reg1;
-					reg2 = ir `reg2;
+					reg1 = ir `Reg;
+					reg2 = ir `Reg2;
 					if(5'b10000 < opcode1) begin // phase 2 decoding
 						case (ir `Opcode)
 							`OPpre: begin pre <= ir `Imm; end
