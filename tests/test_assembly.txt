@@ -10,11 +10,12 @@ start:
 	ci8 $r2, 0x02		;load 0x0005 into r2
 	ci8 $r3, 0x03		;load 0x0004 into r3
 	ci8 $r4, 0xff		;load in b00001111 for logic
-	add $r2, sub $r3	;expected value: r0 = 0x0002 & r1 = 0x0004
-	mul $r3, div $r2	;expected value: r0 = 0x0006 & r1 = 0x0002
-	and $r4, or $r4		;expected value: r0 = 0x0006 & r1 = 0x00ff
-	not $r1, xor $r2	;expected value: r0 = 0x00fe & r1 = 0x00fd
-	sh  $r2, and $r4	;expected value: r0 = 0x03f8 & r1 = 0x00fd
+	add $r2, sub $r0	;expected value: r0 = 0x0002 & r1 = 0x0001
+	div $r2, mul $r3	;expected value: r0 = 0x0001 & r1 = 0x0003
+	and $r4, or $r4		;expected value: r0 = 0x0001 & r1 = 0x00ff
+	not $r1, xor $r2	;expected value: r0 = 0xff00 & r1 = 0x00fd
+	and $r0, sh $r1		;expected value: r0 = 0x0000 & r1 = 0x00fd
+	add $r3, add $r0	;expected value: r0 = 0x0003 & r1 = 0x00fd
 	st  $r0, st  $r1	;store both values to see output
 
 
