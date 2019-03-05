@@ -87,39 +87,7 @@ module phase_1_alu(regfile, mainmem, pc, clk, opcode, regloc, pre, acc);
 	f2i fi2f_inst(f_i2f, regfile[regloc] `WORD);
 
 	always @(posedge clk) begin
-		if(5'b10000 > opcode) begin // phase 1 decoding
-			case (opcode)
-				`OPa2r: begin regfile[regloc] <= regfile[acc]; end
-				`OPr2a: begin regfile[acc] <= regfile[regloc]; end
-				`OPjr: begin pc <= regfile[regloc] `WORD; end
-				`OPst: begin mainmem[regfile[regloc] `WORD ] <= regfile[acc]; end //to check
-				`OPlf: begin regfile[regloc] <= {1, mainmem[pc]}; end // to check, set 1 for float
-				`OPli: begin regfile[regloc] <= {0, mainmem[pc]}; end //to check PC increment, set 0 for int
-				// ALU
-				`OPsh:  begin regfile[acc] `WORD <= regfile[acc][16] ? f_shift : regfile[acc]`WORD << regfile[regloc]`WORD; end
-				`OPadd: begin regfile[acc] `WORD <= regfile[acc][16] ? f_add : regfile[acc]`WORD + regfile[regloc]`WORD; end
-				`OPsub:	begin regfile[acc] `WORD <= regfile[acc][16] ? f_sub : regfile[acc]`WORD - regfile[regloc]`WORD; end
-				`OPmul: begin regfile[acc] `WORD <= regfile[acc][16] ? f_mul : regfile[acc]`WORD * regfile[regloc]`WORD; end
-				`OPdiv: begin regfile[acc] `WORD <= regfile[acc][16] ? f_div : regfile[acc]`WORD / regfile[regloc]`WORD; end
-				`OPnot: begin regfile[acc] `WORD <= ~(regfile[regloc]); end
-				`OPxor: begin regfile[acc] `WORD <= regfile[acc] ^ regfile[regloc]; end
-				`OPand: begin regfile[acc] `WORD <= regfile[acc] & regfile[regloc]; end
-				`OPor:  begin regfile[acc] `WORD <= regfile[acc] | regfile[regloc]; end
-				`OPcvt: begin
-					regfile[acc] `WORD <= regfile[regloc][16] ? f_f2i : f_i2f;
-					regfile[acc][16] <= regfile[acc][16]^1'b1; // Flip register type
-				end
-				`OPslt: begin
-					if(regfile[regloc][16]) begin // Use float slt
-						regfile[acc] `WORD <= f_slt_l;
-						regfile[acc][16] <= 1'b1; // Set acc type to float
-					end else begin // User int slt
-						regfile[acc] `WORD <= regfile[acc] < regfile[ir `Reg];
-						regfile[acc][16] <= 1'b0; // Set acc type to int
-					end
-				end
-			endcase
-		end
+		
 	end
 endmodule
 
@@ -156,9 +124,42 @@ module processor(halt, reset, clk);
 					opcode[0] = ir `Opcode;
 					opcode[1] = ir `Opcode2;
 					reg1[0] = ir `Reg;
-					reg1[1] = ir `Reg2;				
+					reg1[1] = ir `Reg2;	
 
-					if(5'b10000 < opcode1) begin // phase 2 decoding
+					if(5'b10000 >= opcode) begin // phase 1 decoding
+						case (opcode)
+							`OPa2r: begin regfile[regloc] <= regfile[acc]; end
+							`OPr2a: begin regfile[acc] <= regfile[regloc]; end
+							`OPjr: begin pc <= regfile[regloc] `WORD; end
+							`OPst: begin mainmem[regfile[regloc] `WORD ] <= regfile[acc]; end //to check
+							`OPlf: begin regfile[regloc] <= {1, mainmem[pc]}; end // to check, set 1 for float
+							`OPli: begin regfile[regloc] <= {0, mainmem[pc]}; end //to check PC increment, set 0 for int
+							// ALU
+							`OPsh:  begin regfile[acc] `WORD <= regfile[acc][16] ? f_shift : regfile[acc]`WORD << regfile[regloc]`WORD; end
+							`OPadd: begin regfile[acc] `WORD <= regfile[acc][16] ? f_add : regfile[acc]`WORD + regfile[regloc]`WORD; end
+							`OPsub:	begin regfile[acc] `WORD <= regfile[acc][16] ? f_sub : regfile[acc]`WORD - regfile[regloc]`WORD; end
+							`OPmul: begin regfile[acc] `WORD <= regfile[acc][16] ? f_mul : regfile[acc]`WORD * regfile[regloc]`WORD; end
+							`OPdiv: begin regfile[acc] `WORD <= regfile[acc][16] ? f_div : regfile[acc]`WORD / regfile[regloc]`WORD; end
+							`OPnot: begin regfile[acc] `WORD <= ~(regfile[regloc]); end
+							`OPxor: begin regfile[acc] `WORD <= regfile[acc] ^ regfile[regloc]; end
+							`OPand: begin regfile[acc] `WORD <= regfile[acc] & regfile[regloc]; end
+							`OPor:  begin regfile[acc] `WORD <= regfile[acc] | regfile[regloc]; end
+							`OPcvt: begin
+								regfile[acc] `WORD <= regfile[regloc][16] ? f_f2i : f_i2f;
+								regfile[acc][16] <= regfile[acc][16]^1'b1; // Flip register type
+							end
+							`OPslt: begin
+								if(regfile[regloc][16]) begin // Use float slt
+									regfile[acc] `WORD <= f_slt_l;
+									regfile[acc][16] <= 1'b1; // Set acc type to float
+								end else begin // User int slt
+									regfile[acc] `WORD <= regfile[acc] < regfile[ir `Reg];
+									regfile[acc][16] <= 1'b0; // Set acc type to int
+								end
+							end
+						endcase
+					end
+					else begin // phase 2 decoding
 						case (ir `Opcode)
 							`OPpre: begin pre <= ir `Imm; end
 							`OPjp8: begin pc <= {pre, ir `Imm}; end
