@@ -69,7 +69,7 @@ module processor(halt, reset, clk);
 	output reg halt;
 	input reset, clk;
 
-	reg pre `HALFWORD;
+	reg `HALFWORD pre;
 	reg `REGWORD regfile `REGSIZE;
 	reg `WORD mainmem `MEMSIZE;
 	reg `WORD pc = 0;
@@ -88,22 +88,22 @@ module processor(halt, reset, clk);
 
 	// Float module instantiation
 	// add
-	fadd fadd_left(f_add_l, regfile[ACC1] `WORD, regfile[ir `REG1] `WORD);
-	fadd fadd_right(f_add_r, regfile[ACC2] `WORD, regfile[ir `REG2] `WORD);
+	fadd fadd_left(f_add_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
+	fadd fadd_right(f_add_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
 	// sub (flip register value's MSB to change sign and then add)
-	fadd fsub_left(f_sub_l, regfile[ACC1] `WORD, (regfile[ir `REG1] `WORD)^16'h8000);
-	fadd fsub_right(f_sub_r, regfile[ACC2] `WORD, (regfile[ir `REG2] `WORD)^16'h8000);
+	fadd fsub_left(f_sub_l, regfile[`ACC1] `WORD, (regfile[ir `REG1] `WORD)^16'h8000);
+	fadd fsub_right(f_sub_r, regfile[`ACC2] `WORD, (regfile[ir `REG2] `WORD)^16'h8000);
 	// mul
-	fmul fmul_left(f_mul_l, regfile[ACC1] `WORD, regfile[ir `REG1] `WORD);
-	fmul fmul_right(f_mul_r, regfile[ACC2] `WORD, regfile[ir `REG2] `WORD);
+	fmul fmul_left(f_mul_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
+	fmul fmul_right(f_mul_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
 	// div (recip then mul)
-	frecip frecip_left(f_recip_1, regfile[ACC1] `WORD);
-	frecip frecip_right(f_recip_r, regfile[ACC2] `WORD);
+	frecip frecip_left(f_recip_1, regfile[`ACC1] `WORD);
+	frecip frecip_right(f_recip_r, regfile[`ACC2] `WORD);
 	fmul fdiv_left(f_div_l, f_recip_l, regfile[ir `REG1] `WORD);
 	fmul fdiv_right(f_div_r, f_recip_r, regfile[ir `REG2] `WORD);
 	// shift
-	fshift fshift_left(f_shift_l, regfile[ACC1] `WORD, regfile[ir `REG1] `WORD);
-	fshift fshift_right(f_shift_r, regfile[ACC2] `WORD, regfile[ir `REG2] `WORD);
+	fshift fshift_left(f_shift_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
+	fshift fshift_right(f_shift_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
 	// f2i
 	f2i ff2i_left(f_f2i_l, regfile[ir `REG1] `WORD);
 	f2i ff2i_right(f_f2i_r, regfile[ir `REG2] `WORD);
@@ -129,59 +129,67 @@ module processor(halt, reset, clk);
 				if(5'b10000 < s) begin // phase 1 decoding
 					// Left VLIW Instruction
 					case (ir `OPCODE1)
-						`OPa2r: begin regfile[ir `REG1] <= regfile[ACC1]; end
-						`OPr2a: begin regfile[ACC1] <= regfile[ir `REG1]; end
+						`OPa2r: begin regfile[ir `REG1] <= regfile[`ACC1]; end
+						`OPr2a: begin regfile[`ACC1] <= regfile[ir `REG1]; end
 						`OPjr: begin pc <= regfile[ir `REG1] `WORD; end
-						`OPst: begin mainmem[regfile[ir `REG1]] <= regfile[ACC1]; end //to check
+						`OPst: begin mainmem[regfile[ir `REG1]] <= regfile[`ACC1]; end //to check
 						`OPlf: begin regfile[ir `REG1] <= mainmem[pc]; end //to check
 						`OPli: begin regfile[ir `REG1] <= mainmem[pc]; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[ACC1] `WORD <= regfile[ir `REG1][TYPEBIT] ? f_f2i_l : f_i2f_l;
-							regfile[ACC1][TYPEBIT] <= regfile[ACC1][TYPEBIT]^1'b1; // Flip register type
+							regfile[`ACC1] `WORD <= regfile[ir `REG1][`TYPEBIT] ? f_f2i_l : f_i2f_l;
+							regfile[`ACC1][`TYPEBIT] <= regfile[`ACC1][`TYPEBIT]^1'b1; // Flip register type
 						end
-						`OPslt: 
-						`OPsh:  begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_shift_l : regfile[ACC1]<<regfile[ir `REG1]; end
-						`OPadd: begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_add_l : regfile[ACC1]+regfile[ir `REG1]; end
-						`OPsub:	begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_sub_l : regfile[ACC1]-regfile[ir `REG1]; end
-						`OPmul: begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_mul_l : regfile[ACC1]*regfile[ir `REG1]; end
-						`OPdiv: begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_div_l : regfile[ACC1]/regfile[ir `REG1]; end
-						`OPnot: begin regfile[ACC1] `WORD <= ~(regfile[ir `REG1]); end
-						`OPxor: begin regfile[ACC1] `WORD <= regfile[ACC1] ^ regfile[ir `REG1]; end
-						`OPand: begin regfile[ACC1] `WORD <= regfile[ACC1] & regfile[ir `REG1]; end
-						`OPor:  begin regfile[ACC1] `WORD <= regfile[ACC1] | regfile[ir `REG1]; end
+						`OPslt: begin
+							if(regfile[regloc][`TYPEBIT]) begin // Use float slt
+								regfile[`ACC1] `WORD <= f_slt_l;
+								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
+							end else begin // User int slt
+								regfile[`ACC1] `WORD <= regfile[`ACC1] < regfile[ir `REG1];
+								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
+							end
+						end
+						`OPsh:  begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_shift_l : regfile[`ACC1]<<regfile[ir `REG1]; end
+						`OPadd: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_add_l : regfile[`ACC1]+regfile[ir `REG1]; end
+						`OPsub:	begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_sub_l : regfile[`ACC1]-regfile[ir `REG1]; end
+						`OPmul: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_mul_l : regfile[`ACC1]*regfile[ir `REG1]; end
+						`OPdiv: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_div_l : regfile[`ACC1]/regfile[ir `REG1]; end
+						`OPnot: begin regfile[`ACC1] `WORD <= ~(regfile[ir `REG1]); end
+						`OPxor: begin regfile[`ACC1] `WORD <= regfile[`ACC1] ^ regfile[ir `REG1]; end
+						`OPand: begin regfile[`ACC1] `WORD <= regfile[`ACC1] & regfile[ir `REG1]; end
+						`OPor:  begin regfile[`ACC1] `WORD <= regfile[`ACC1] | regfile[ir `REG1]; end
 					endcase
 					// Right VLIW Instruction
 					case (ir `OPCODE2)
-						`OPa2r: begin regfile[ir `REG2] <= regfile[ACC2]; end
-						`OPr2a: begin regfile[ACC2] <= regfile[ir `REG2]; end
+						`OPa2r: begin regfile[ir `REG2] <= regfile[`ACC2]; end
+						`OPr2a: begin regfile[`ACC2] <= regfile[ir `REG2]; end
 						`OPjr: begin pc <= regfile[ir `REG2] `WORD; end
-						`OPst: begin mainmem[regfile[ir `REG2]] <= regfile[ACC2]; end //to check
+						`OPst: begin mainmem[regfile[ir `REG2]] <= regfile[`ACC2]; end //to check
 						`OPlf: begin regfile[ir `REG2] <= mainmem[pc]; end //to check
 						`OPli: begin regfile[ir `REG2] <= mainmem[pc]; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[ACC2] `WORD <= regfile[ir `REG2][TYPEBIT] ? f_f2i_r : f_i2f_r;
-							regfile[ACC2][TYPEBIT] <= regfile[ACC2][TYPEBIT]^1'b1; // Flip register type
+							regfile[`ACC2] `WORD <= regfile[ir `REG2][`TYPEBIT] ? f_f2i_r : f_i2f_r;
+							regfile[`ACC2][`TYPEBIT] <= regfile[`ACC2][`TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: begin
-							if(regfile[regloc][TYPEBIT]) begin // Use float slt
-								regfile[ACC2] `WORD <= f_slt_l;
-								regfile[ACC2][TYPEBIT] <= 0'b1; // Set acc type to int
+							if(regfile[regloc][`TYPEBIT]) begin // Use float slt
+								regfile[`ACC2] `WORD <= f_slt_r;
+								regfile[`ACC2][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end else begin // User int slt
-								regfile[ACC2] `WORD <= regfile[ACC2] < regfile[ir `REG2];
-								regfile[ACC2][TYPEBIT] <= 0'b1; // Set acc type to int
+								regfile[`ACC2] `WORD <= regfile[`ACC2] < regfile[ir `REG2];
+								regfile[`ACC2][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end
 						end
-						`OPsh:  begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_shift_r : regfile[ACC2]<<regfile[ir `REG2]; end
-						`OPadd: begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_add_r : regfile[ACC2]+regfile[ir `REG2]; end
-						`OPsub:	begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_sub_r : regfile[ACC2]-regfile[ir `REG2]; end
-						`OPmul: begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_mul_r : regfile[ACC2]*regfile[ir `REG2]; end
-						`OPdiv: begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_div_r : regfile[ACC2]/regfile[ir `REG2]; end
-						`OPnot: begin regfile[ACC2] `WORD <= ~(regfile[ir `REG2]); end
-						`OPxor: begin regfile[ACC2] `WORD <= regfile[ACC2] ^ regfile[ir `REG2]; end
-						`OPand: begin regfile[ACC2] `WORD <= regfile[ACC2] & regfile[ir `REG2]; end
-						`OPor:  begin regfile[ACC2] `WORD <= regfile[ACC2] | regfile[ir `REG2]; end
+						`OPsh:  begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_shift_r : regfile[`ACC2]<<regfile[ir `REG2]; end
+						`OPadd: begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_add_r : regfile[`ACC2]+regfile[ir `REG2]; end
+						`OPsub:	begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_sub_r : regfile[`ACC2]-regfile[ir `REG2]; end
+						`OPmul: begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_mul_r : regfile[`ACC2]*regfile[ir `REG2]; end
+						`OPdiv: begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_div_r : regfile[`ACC2]/regfile[ir `REG2]; end
+						`OPnot: begin regfile[`ACC2] `WORD <= ~(regfile[ir `REG2]); end
+						`OPxor: begin regfile[`ACC2] `WORD <= regfile[`ACC2] ^ regfile[ir `REG2]; end
+						`OPand: begin regfile[`ACC2] `WORD <= regfile[`ACC2] & regfile[ir `REG2]; end
+						`OPor:  begin regfile[`ACC2] `WORD <= regfile[`ACC2] | regfile[ir `REG2]; end
 					endcase
 				end
 				else begin // phase 2 decoding
