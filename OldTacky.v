@@ -77,14 +77,15 @@ module processor(halt, reset, clk);
 	reg `STATE s = `Fetch;
 
 	// Float module destinations
-	reg `WORD f_add_l, f_add_r;
-	reg `WORD f_sub_l, f_sub_r;
-	reg `WORD f_mul_l, f_mul_r;
-	reg `WORD f_recip_l, f_recip_r;
-	reg `WORD f_shift_l, f_shift_r;
-	reg `WORD f_div_l, f_div_r;
-	reg `WORD f_f2i_l, f_f2i_r;
-	reg `WORD f_i2f_l, f_i2f_r;
+	wire `WORD f_add_l, f_add_r;
+	wire `WORD f_sub_l, f_sub_r;
+	wire `WORD f_mul_l, f_mul_r;
+	wire `WORD f_recip_l, f_recip_r;
+	wire `WORD f_shift_l, f_shift_r;
+	wire `WORD f_div_l, f_div_r;
+	wire `WORD f_f2i_l, f_f2i_r;
+	wire `WORD f_i2f_l, f_i2f_r;
+	wire f_slt_l, f_slt_r;
 
 	// Float module instantiation
 	// add
@@ -97,7 +98,7 @@ module processor(halt, reset, clk);
 	fmul fmul_left(f_mul_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
 	fmul fmul_right(f_mul_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
 	// div (recip then mul)
-	frecip frecip_left(f_recip_1, regfile[`ACC1] `WORD);
+	frecip frecip_left(f_recip_l, regfile[`ACC1] `WORD);
 	frecip frecip_right(f_recip_r, regfile[`ACC2] `WORD);
 	fmul fdiv_left(f_div_l, f_recip_l, regfile[ir `REG1] `WORD);
 	fmul fdiv_right(f_div_r, f_recip_r, regfile[ir `REG2] `WORD);
@@ -110,6 +111,9 @@ module processor(halt, reset, clk);
 	// i2f
 	f2i fi2f_left(f_i2f_l, regfile[ir `REG1] `WORD);
 	f2i fi2f_right(f_i2f_r, regfile[ir `REG2] `WORD);
+	// slt
+	fslt fslt_left(f_slt_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
+	fslt fslt_right(f_slt_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
 
 
 	always @(reset) begin
@@ -141,7 +145,7 @@ module processor(halt, reset, clk);
 							regfile[`ACC1][`TYPEBIT] <= regfile[`ACC1][`TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: begin
-							if(regfile[regloc][`TYPEBIT]) begin // Use float slt
+							if(regfile[ir `REG1][`TYPEBIT]) begin // Use float slt
 								regfile[`ACC1] `WORD <= f_slt_l;
 								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end else begin // User int slt
@@ -173,7 +177,7 @@ module processor(halt, reset, clk);
 							regfile[`ACC2][`TYPEBIT] <= regfile[`ACC2][`TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: begin
-							if(regfile[regloc][`TYPEBIT]) begin // Use float slt
+							if(regfile[ir `REG2][`TYPEBIT]) begin // Use float slt
 								regfile[`ACC2] `WORD <= f_slt_r;
 								regfile[`ACC2][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end else begin // User int slt
@@ -198,8 +202,8 @@ module processor(halt, reset, clk);
 						`OPjp8: begin pc <= {pre, ir `IMM8}; end
 						`OPjnz8: begin if (ir `REG1 != 0) pc <= {pre, ir `IMM8}; end
 						`OPjz8: begin if (ir `REG1 == 0) pc <= {pre, ir `IMM8}; end
-						`OPcf8: begin regfile[ir `REG1] = {1, pre, ir `IMM8}; end
-						`OPci8: begin regfile[ir `REG1] = {0, pre, ir `IMM8}; end
+						`OPcf8: begin regfile[ir `REG1] = {1'b1, pre, ir `IMM8}; end
+						`OPci8: begin regfile[ir `REG1] = {1'b0, pre, ir `IMM8}; end
 						`OPsys: begin halt <= 1; end
 					endcase
 				end
