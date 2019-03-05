@@ -120,8 +120,8 @@ module processor(halt, reset, clk);
 		halt = 0;
 		pc = 0;
 		s = `Fetch;
-		$readmemh2(regfile);
-		$readmemh1(mainmem);
+		//$readmemh("vmem0-float.vmem", regfile);
+		$readmemh("vmem1-text.vmem", mainmem);
 	end
 
 	always @(posedge clk) begin
@@ -289,7 +289,7 @@ module frecip(r, a);
 	output wire `FLOAT r;
 	input wire `FLOAT a;
 	reg [6:0] look[127:0];
-	initial $readmemh0(look);
+	initial $readmemh("vmem0-float.vmem", look);
 	assign r `FSIGN = a `FSIGN;
 	assign r `FEXP = 253 + (!(a `FFRAC)) - a `FEXP;
 	assign r `FFRAC = look[a `FFRAC];
@@ -330,4 +330,23 @@ module f2i(i, f);
 	fslt m1(big, `F32767, f);
 	assign ui = {1'b1, f `FFRAC, 16'b0} >> ((128+22) - f `FEXP);
 	assign i = (tiny ? 0 : (big ? 32767 : (f `FSIGN ? (-ui) : ui)));
+endmodule
+
+
+module testbench;
+    reg reset = 0;
+    reg clk = 0;
+    wire halted;
+    processor PE(halted, reset, clk);
+    initial begin
+        $dumpfile("output.txt");
+        $dumpvars(0, PE);
+        #10 reset = 1;
+        #10 reset = 0;
+        while (!halted) begin
+            #10 clk = 1;
+            #10 clk = 0;
+        end
+        $finish;
+    end
 endmodule
