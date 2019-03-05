@@ -7,8 +7,9 @@
 `define IMM8	 [7:0] // Immediate 8 bit value location
 `define STATE	 [5:0]
 `define HALFWORD [7:0]
-`define ACC1 0; // Location for first accumulator
-`define ACC2 1; // Location for second accumulator
+`define ACC1 0 // Location for first accumulator
+`define ACC2 1 // Location for second accumulator
+`define TYPEBIT 16 // Where the register type is defined (float = 1, int = 0)
 
 // TODO: modify for our code
 `define REGWORD [16:0]
@@ -52,6 +53,17 @@
 `define Fetch	5'b11111
 `define Execute	5'b11110
 
+// Float Field definitions
+`define	INT	signed [15:0]	// integer size
+`define FLOAT	[15:0]	// half-precision float size
+`define FSIGN	[15]	// sign bit
+`define FEXP	[14:7]	// exponent
+`define FFRAC	[6:0]	// fractional part (leading 1 implied)
+
+// Float Constants
+`define	FZERO	16'b0	  // float 0
+`define F32767  16'h46ff  // closest approx to 32767, actually 32640
+`define F32768  16'hc700  // -32768
 
 module processor(halt, reset, clk);
 	output reg halt;
@@ -117,59 +129,59 @@ module processor(halt, reset, clk);
 				if(5'b10000 < s) begin // phase 1 decoding
 					// Left VLIW Instruction
 					case (ir `OPCODE1)
-						`OPa2r: begin regfile[ir `REG1] <= regfile[0]; end
-						`OPr2a: begin regfile[0] <= regfile[ir `REG1]; end
+						`OPa2r: begin regfile[ir `REG1] <= regfile[ACC1]; end
+						`OPr2a: begin regfile[ACC1] <= regfile[ir `REG1]; end
 						`OPjr: begin pc <= regfile[ir `REG1] `WORD; end
-						`OPst: begin mainmem[regfile[ir `REG1]] <= regfile[0]; end //to check
+						`OPst: begin mainmem[regfile[ir `REG1]] <= regfile[ACC1]; end //to check
 						`OPlf: begin regfile[ir `REG1] <= mainmem[pc]; end //to check
 						`OPli: begin regfile[ir `REG1] <= mainmem[pc]; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[0] `WORD <= regfile[ir `REG1][16] ? f_f2i_l : f_i2f_l;
-							regfile[0][16] <= regfile[0][16]^1'b1; // Flip register type
+							regfile[ACC1] `WORD <= regfile[ir `REG1][TYPEBIT] ? f_f2i_l : f_i2f_l;
+							regfile[ACC1][TYPEBIT] <= regfile[ACC1][TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: 
-						`OPsh:  begin regfile[0] `WORD <= regfile[0][16] ? f_shift_l : regfile[0]<<regfile[ir `REG1]; end
-						`OPadd: begin regfile[0] `WORD <= regfile[0][16] ? f_add_l : regfile[0]+regfile[ir `REG1]; end
-						`OPsub:	begin regfile[0] `WORD <= regfile[0][16] ? f_sub_l : regfile[0]-regfile[ir `REG1]; end
-						`OPmul: begin regfile[0] `WORD <= regfile[0][16] ? f_mul_l : regfile[0]*regfile[ir `REG1]; end
-						`OPdiv: begin regfile[0] `WORD <= regfile[0][16] ? f_div_l : regfile[0]/regfile[ir `REG1]; end
-						`OPnot: begin regfile[0] `WORD <= ~(regfile[ir `REG1]); end
-						`OPxor: begin regfile[0] `WORD <= regfile[0] ^ regfile[ir `REG1]; end
-						`OPand: begin regfile[0] `WORD <= regfile[0] & regfile[ir `REG1]; end
-						`OPor:  begin regfile[0] `WORD <= regfile[0] | regfile[ir `REG1]; end
+						`OPsh:  begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_shift_l : regfile[ACC1]<<regfile[ir `REG1]; end
+						`OPadd: begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_add_l : regfile[ACC1]+regfile[ir `REG1]; end
+						`OPsub:	begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_sub_l : regfile[ACC1]-regfile[ir `REG1]; end
+						`OPmul: begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_mul_l : regfile[ACC1]*regfile[ir `REG1]; end
+						`OPdiv: begin regfile[ACC1] `WORD <= regfile[ACC1][TYPEBIT] ? f_div_l : regfile[ACC1]/regfile[ir `REG1]; end
+						`OPnot: begin regfile[ACC1] `WORD <= ~(regfile[ir `REG1]); end
+						`OPxor: begin regfile[ACC1] `WORD <= regfile[ACC1] ^ regfile[ir `REG1]; end
+						`OPand: begin regfile[ACC1] `WORD <= regfile[ACC1] & regfile[ir `REG1]; end
+						`OPor:  begin regfile[ACC1] `WORD <= regfile[ACC1] | regfile[ir `REG1]; end
 					endcase
 					// Right VLIW Instruction
 					case (ir `OPCODE2)
-						`OPa2r: begin regfile[ir `REG2] <= regfile[1]; end
-						`OPr2a: begin regfile[1] <= regfile[ir `REG2]; end
+						`OPa2r: begin regfile[ir `REG2] <= regfile[ACC2]; end
+						`OPr2a: begin regfile[ACC2] <= regfile[ir `REG2]; end
 						`OPjr: begin pc <= regfile[ir `REG2] `WORD; end
-						`OPst: begin mainmem[regfile[ir `REG2]] <= regfile[1]; end //to check
+						`OPst: begin mainmem[regfile[ir `REG2]] <= regfile[ACC2]; end //to check
 						`OPlf: begin regfile[ir `REG2] <= mainmem[pc]; end //to check
 						`OPli: begin regfile[ir `REG2] <= mainmem[pc]; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[1] `WORD <= regfile[ir `REG2][16] ? f_f2i_r : f_i2f_r;
-							regfile[1][16] <= regfile[1][16]^1'b1; // Flip register type
+							regfile[ACC2] `WORD <= regfile[ir `REG2][TYPEBIT] ? f_f2i_r : f_i2f_r;
+							regfile[ACC2][TYPEBIT] <= regfile[ACC2][TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: begin
-							if(regfile[regloc][16]) begin // Use float slt
-								regfile[1] `WORD <= f_slt_l;
-								regfile[1][16] <= 0'b1; // Set acc type to int
+							if(regfile[regloc][TYPEBIT]) begin // Use float slt
+								regfile[ACC2] `WORD <= f_slt_l;
+								regfile[ACC2][TYPEBIT] <= 0'b1; // Set acc type to int
 							end else begin // User int slt
-								regfile[1] `WORD <= regfile[1] < regfile[ir `REG2];
-								regfile[1][16] <= 0'b1; // Set acc type to int
+								regfile[ACC2] `WORD <= regfile[ACC2] < regfile[ir `REG2];
+								regfile[ACC2][TYPEBIT] <= 0'b1; // Set acc type to int
 							end
 						end
-						`OPsh:  begin regfile[1] `WORD <= regfile[1][16] ? f_shift_r : regfile[1]<<regfile[ir `REG2]; end
-						`OPadd: begin regfile[1] `WORD <= regfile[1][16] ? f_add_r : regfile[1]+regfile[ir `REG2]; end
-						`OPsub:	begin regfile[1] `WORD <= regfile[1][16] ? f_sub_r : regfile[1]-regfile[ir `REG2]; end
-						`OPmul: begin regfile[1] `WORD <= regfile[1][16] ? f_mul_r : regfile[1]*regfile[ir `REG2]; end
-						`OPdiv: begin regfile[1] `WORD <= regfile[1][16] ? f_div_r : regfile[1]/regfile[ir `REG2]; end
-						`OPnot: begin regfile[1] `WORD <= ~(regfile[ir `REG2]); end
-						`OPxor: begin regfile[1] `WORD <= regfile[1] ^ regfile[ir `REG2]; end
-						`OPand: begin regfile[1] `WORD <= regfile[1] & regfile[ir `REG2]; end
-						`OPor:  begin regfile[1] `WORD <= regfile[1] | regfile[ir `REG2]; end
+						`OPsh:  begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_shift_r : regfile[ACC2]<<regfile[ir `REG2]; end
+						`OPadd: begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_add_r : regfile[ACC2]+regfile[ir `REG2]; end
+						`OPsub:	begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_sub_r : regfile[ACC2]-regfile[ir `REG2]; end
+						`OPmul: begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_mul_r : regfile[ACC2]*regfile[ir `REG2]; end
+						`OPdiv: begin regfile[ACC2] `WORD <= regfile[ACC2][TYPEBIT] ? f_div_r : regfile[ACC2]/regfile[ir `REG2]; end
+						`OPnot: begin regfile[ACC2] `WORD <= ~(regfile[ir `REG2]); end
+						`OPxor: begin regfile[ACC2] `WORD <= regfile[ACC2] ^ regfile[ir `REG2]; end
+						`OPand: begin regfile[ACC2] `WORD <= regfile[ACC2] & regfile[ir `REG2]; end
+						`OPor:  begin regfile[ACC2] `WORD <= regfile[ACC2] | regfile[ir `REG2]; end
 					endcase
 				end
 				else begin // phase 2 decoding
@@ -189,22 +201,13 @@ module processor(halt, reset, clk);
 	end
 endmodule
 
+
+
+// ************************************************ Float ********************************************
+
 // Floating point Verilog modules for CPE480
 // Created February 19, 2019 by Henry Dietz, http://aggregate.org/hankd
 // Distributed under CC BY 4.0, https://creativecommons.org/licenses/by/4.0/
-
-// Field definitions
-`define	WORD	[15:0]	// generic machine word size
-`define	INT	signed [15:0]	// integer size
-`define FLOAT	[15:0]	// half-precision float size
-`define FSIGN	[15]	// sign bit
-`define FEXP	[14:7]	// exponent
-`define FFRAC	[6:0]	// fractional part (leading 1 implied)
-
-// Constants
-`define	FZERO	16'b0	  // float 0
-`define F32767  16'h46ff  // closest approx to 32767, actually 32640
-`define F32768  16'hc700  // -32768
 
 // Count leading zeros, 16-bit (5-bit result) d=lead0s(s)
 module lead0s(d, s);
