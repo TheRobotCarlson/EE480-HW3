@@ -75,6 +75,7 @@ module processor(halt, reset, clk);
 	reg `WORD pc = 0;
 	reg `WORD ir;
 	reg `STATE s = `Fetch;
+	reg `WORD temp_l, temp_r;
 
 	// Float module destinations
 	wire `WORD f_add_l, f_add_r;
@@ -98,10 +99,10 @@ module processor(halt, reset, clk);
 	fmul fmul_left(f_mul_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
 	fmul fmul_right(f_mul_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
 	// div (recip then mul)
-	frecip frecip_left(f_recip_l, regfile[`ACC1] `WORD);
-	frecip frecip_right(f_recip_r, regfile[`ACC2] `WORD);
-	fmul fdiv_left(f_div_l, f_recip_l, regfile[ir `REG1] `WORD);
-	fmul fdiv_right(f_div_r, f_recip_r, regfile[ir `REG2] `WORD);
+	frecip frecip_left(f_recip_l, regfile[ir `REG1] `WORD);
+	frecip frecip_right(f_recip_r, regfile[ir `REG2] `WORD);
+	fmul fdiv_left(f_div_l, f_recip_l, regfile[`ACC1] `WORD);
+	fmul fdiv_right(f_div_r, f_recip_r, regfile[`ACC2] `WORD);
 	// shift
 	fshift fshift_left(f_shift_l, regfile[`ACC1] `WORD, regfile[ir `REG1] `WORD);
 	fshift fshift_right(f_shift_r, regfile[`ACC2] `WORD, regfile[ir `REG2] `WORD);
@@ -129,91 +130,95 @@ module processor(halt, reset, clk);
 		`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
 		`Execute: 
 			begin 
+				$display("\npc: %d", pc);
 				$display("pre: %d", pre);
-				$display("r0: %d", regfile[`ACC1]);
-				$display("r1: %d", regfile[`ACC2]);
-				$display("r2: %d", regfile[2]);
-				$display("r3: %d", regfile[3]);
-				$display("r4: %d", regfile[4]);
-				$display("r5: %d", regfile[5]);
-				$display("r6: %d", regfile[6]);
-				$display("r7: %d", regfile[7]);
+				$display("r0: %d %h", regfile[`ACC1]`WORD, regfile[`ACC1]`WORD);
+				$display("r1: %d %h", regfile[`ACC2]`WORD, regfile[`ACC2]`WORD);
+				$display("r2: %d %h", regfile[2]`WORD, regfile[2]`WORD);
+				$display("r3: %d %h", regfile[3]`WORD, regfile[3]`WORD);
+				$display("r4: %d %h", regfile[4]`WORD, regfile[4]`WORD);
+				$display("r5: %d %h", regfile[5]`WORD, regfile[5]`WORD);
+				$display("r6: %d %h", regfile[6]`WORD, regfile[6]`WORD);
+				$display("r7: %d %h", regfile[7]`WORD, regfile[7]`WORD);
 				pc <= pc + 1; // bump pc
 				if(5'b10000 > ir `OPCODE1) begin // phase 1 decoding
 					// Left VLIW Instruction
+					temp_l = regfile[ir `REG1]`WORD;
+					temp_r = regfile[ir `REG2]`WORD;
+
 					case (ir `OPCODE1)
-						`OPa2r: begin regfile[ir `REG1] <= regfile[`ACC1]; end
-						`OPr2a: begin regfile[`ACC1] <= regfile[ir `REG1]; end
-						`OPjr: begin pc <= regfile[ir `REG1] `WORD; end
-						`OPst: begin mainmem[regfile[ir `REG1]] <= regfile[`ACC1]; end //to check
-						`OPlf: begin regfile[ir `REG1] <= mainmem[pc]; end //to check
-						`OPli: begin regfile[ir `REG1] <= mainmem[pc]; end //to check PC increment
+						`OPa2r: begin temp_l <= regfile[`ACC1]`WORD; end
+						`OPr2a: begin regfile[`ACC1]`WORD <= temp_l; end
+						`OPjr: begin pc <= temp_l; end
+						`OPst: begin mainmem[temp_l] <= regfile[`ACC1]`WORD; end //to check
+						`OPlf: begin temp_l <= mainmem[pc]`WORD; end //to check
+						`OPli: begin temp_l <= mainmem[pc]`WORD; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[`ACC1] `WORD <= regfile[ir `REG1][`TYPEBIT] ? f_f2i_l : f_i2f_l;
-							regfile[`ACC1][`TYPEBIT] <= regfile[`ACC1][`TYPEBIT]^1'b1; // Flip register type
+							regfile[`ACC1]`WORD <= regfile[ir `REG1][`TYPEBIT] ? f_f2i_l : f_i2f_l;
+							regfile[`ACC1][`TYPEBIT] <= regfile[ir `REG1][`TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: begin
 							if(regfile[ir `REG1][`TYPEBIT]) begin // Use float slt
-								regfile[`ACC1] `WORD <= f_slt_l;
+								regfile[`ACC1]`WORD <= f_slt_l;
 								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end else begin // User int slt
-								regfile[`ACC1] `WORD <= regfile[`ACC1] < regfile[ir `REG1];
+								regfile[`ACC1]`WORD <= regfile[`ACC1]`WORD < temp_l;
 								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end
 						end
-						`OPsh:  begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_shift_l : regfile[`ACC1]<<regfile[ir `REG1]; end
-						`OPadd: begin 	$display("add"); regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_add_l : regfile[`ACC1]+regfile[ir `REG1]; end
-						`OPsub:	begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_sub_l : regfile[`ACC1]-regfile[ir `REG1]; end
-						`OPmul: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_mul_l : regfile[`ACC1]*regfile[ir `REG1]; end
-						`OPdiv: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_div_l : regfile[`ACC1]/regfile[ir `REG1]; end
-						`OPnot: begin regfile[`ACC1] `WORD <= ~(regfile[ir `REG1]); end
-						`OPxor: begin regfile[`ACC1] `WORD <= regfile[`ACC1] ^ regfile[ir `REG1]; end
-						`OPand: begin regfile[`ACC1] `WORD <= regfile[`ACC1] & regfile[ir `REG1]; end
-						`OPor:  begin regfile[`ACC1] `WORD <= regfile[`ACC1] | regfile[ir `REG1]; end
+						`OPsh:  begin regfile[`ACC1]`WORD <= regfile[`ACC1][`TYPEBIT] ? f_shift_l : regfile[`ACC1]`WORD << temp_l; end
+						`OPadd: begin regfile[`ACC1]`WORD <= regfile[`ACC1][`TYPEBIT] ? f_add_l : regfile[`ACC1]`WORD + temp_l; end
+						`OPsub:	begin regfile[`ACC1]`WORD <= regfile[`ACC1][`TYPEBIT] ? f_sub_l : regfile[`ACC1]`WORD - temp_l; end
+						`OPmul: begin regfile[`ACC1]`WORD <= regfile[`ACC1][`TYPEBIT] ? f_mul_l : regfile[`ACC1]`WORD * temp_l; end
+						`OPdiv: begin regfile[`ACC1]`WORD <= regfile[`ACC1][`TYPEBIT] ? f_div_l : regfile[`ACC1]`WORD / temp_l; end
+						`OPnot: begin regfile[`ACC1]`WORD <= ~(temp_l); end
+						`OPxor: begin regfile[`ACC1]`WORD <= regfile[`ACC1]`WORD ^ temp_l; end
+						`OPand: begin regfile[`ACC1]`WORD <= regfile[`ACC1]`WORD & temp_l; end
+						`OPor:  begin regfile[`ACC1]`WORD <= regfile[`ACC1]`WORD | temp_l; end
 					endcase
 					// Right VLIW Instruction
 					case (ir `OPCODE2)
-						`OPa2r: begin regfile[ir `REG2] <= regfile[`ACC2]; end
-						`OPr2a: begin regfile[`ACC2] <= regfile[ir `REG2]; end
-						`OPjr: begin pc <= regfile[ir `REG2] `WORD; end
-						`OPst: begin mainmem[regfile[ir `REG2]] <= regfile[`ACC2]; end //to check
-						`OPlf: begin regfile[ir `REG2] <= mainmem[pc]; end //to check
-						`OPli: begin regfile[ir `REG2] <= mainmem[pc]; end //to check PC increment
+						`OPa2r: begin temp_r <= regfile[`ACC2]`WORD; end
+						`OPr2a: begin regfile[`ACC2]`WORD <= temp_r; end
+						`OPjr: begin pc <= temp_r; end
+						`OPst: begin mainmem[regfile[ir `REG2]]`WORD <= regfile[`ACC2]`WORD; end //to check
+						`OPlf: begin temp_r <= mainmem[pc]`WORD; end //to check
+						`OPli: begin temp_r <= mainmem[pc]`WORD; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[`ACC2] `WORD <= regfile[ir `REG2][`TYPEBIT] ? f_f2i_r : f_i2f_r;
-							regfile[`ACC2][`TYPEBIT] <= regfile[`ACC2][`TYPEBIT]^1'b1; // Flip register type
+							regfile[`ACC2]`WORD <= regfile[ir `REG2][`TYPEBIT]`WORD ? f_f2i_r : f_i2f_r;
+							regfile[`ACC2][`TYPEBIT]`WORD <= regfile[ir `REG2][`TYPEBIT]`WORD^1'b1; // Flip register type
 						end
 						`OPslt: begin
 							if(regfile[ir `REG2][`TYPEBIT]) begin // Use float slt
-								regfile[`ACC2] `WORD <= f_slt_r;
+								regfile[`ACC2]`WORD <= f_slt_r;
 								regfile[`ACC2][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end else begin // User int slt
-								regfile[`ACC2] `WORD <= regfile[`ACC2] < regfile[ir `REG2];
+								regfile[`ACC2]`WORD <= regfile[`ACC2] < temp_r;
 								regfile[`ACC2][`TYPEBIT] <= 1'b1; // Set acc type to int
 							end
 						end
-						`OPsh:  begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_shift_r : regfile[`ACC2]<<regfile[ir `REG2]; end
-						`OPadd: begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_add_r : regfile[`ACC2]+regfile[ir `REG2]; end
-						`OPsub:	begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_sub_r : regfile[`ACC2]-regfile[ir `REG2]; end
-						`OPmul: begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_mul_r : regfile[`ACC2]*regfile[ir `REG2]; end
-						`OPdiv: begin regfile[`ACC2] `WORD <= regfile[`ACC2][`TYPEBIT] ? f_div_r : regfile[`ACC2]/regfile[ir `REG2]; end
-						`OPnot: begin regfile[`ACC2] `WORD <= ~(regfile[ir `REG2]); end
-						`OPxor: begin regfile[`ACC2] `WORD <= regfile[`ACC2] ^ regfile[ir `REG2]; end
-						`OPand: begin regfile[`ACC2] `WORD <= regfile[`ACC2] & regfile[ir `REG2]; end
-						`OPor:  begin regfile[`ACC2] `WORD <= regfile[`ACC2] | regfile[ir `REG2]; end
+						`OPsh:  begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_shift_r : regfile[`ACC2]`WORD << temp_r; end
+						`OPadd: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_add_r : regfile[`ACC2]`WORD + temp_r; end
+						`OPsub:	begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_sub_r : regfile[`ACC2]`WORD - temp_r; end
+						`OPmul: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_mul_r : regfile[`ACC2]`WORD * regfile[ir `REG2]`WORD; end
+						`OPdiv: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_div_r : regfile[`ACC2]`WORD / regfile[ir `REG2]`WORD; end
+						`OPnot: begin regfile[`ACC2]`WORD <= ~(regfile[ir `REG2]`WORD); end
+						`OPxor: begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD ^ regfile[ir `REG2]`WORD; end
+						`OPand: begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD & regfile[ir `REG2]`WORD; end
+						`OPor:  begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD | regfile[ir `REG2]`WORD; end
 					endcase
 				end
 				else begin // phase 2 decoding
 					case (ir `OPCODE1)
-						`OPpre: begin $display("pre"); pre <= ir `IMM8; end
+						`OPpre: begin pre <= ir `IMM8; end
 						`OPjp8: begin pc <= {pre, ir `IMM8}; end
 						`OPjnz8: begin if (ir `REG1 != 0) pc <= {pre, ir `IMM8}; end
 						`OPjz8: begin if (ir `REG1 == 0) pc <= {pre, ir `IMM8}; end
-						`OPcf8: begin regfile[ir `REG1] = {1'b1, pre, ir `IMM8}; end
-						`OPci8: begin $display("ci8"); regfile[ir `REG1] = {1'b0, pre, ir `IMM8}; end
-						`OPsys: begin $display("sys"); halt <= 1; end
+						`OPcf8: begin regfile[ir `REG1] <= {1'b1, pre, ir `IMM8}; end
+						`OPci8: begin regfile[ir `REG1] <= {1'b0, pre, ir `IMM8}; end
+						`OPsys: begin halt <= 1; end
 					endcase
 				end
 				s <= `Fetch;
