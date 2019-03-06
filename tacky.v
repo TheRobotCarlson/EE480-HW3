@@ -2,13 +2,13 @@
 `define WORD	 [15:0] // Standard word length
 `define OPCODE1	 [15:11] // Typical opcode field
 `define OPCODE2  [7:3] // VLIW 2nd Op location
-`define REG1	 [11:9] // Typical opcode field 
+`define REG1	 [10:8] // Typical opcode field 
 `define REG2	 [2:0] // VLIW 2nd Op location
 `define IMM8	 [7:0] // Immediate 8 bit value location
 `define STATE	 [5:0]
 `define HALFWORD [7:0]
-`define ACC1 0 // Location for first accumulator
-`define ACC2 1 // Location for second accumulator
+`define ACC1 3'b000 // Location for first accumulator
+`define ACC2 3'b001 // Location for second accumulator
 `define TYPEBIT 16 // Where the register type is defined (float = 1, int = 0)
 
 // TODO: modify for our code
@@ -129,8 +129,17 @@ module processor(halt, reset, clk);
 		`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
 		`Execute: 
 			begin 
+				$display("pre: %d", pre);
+				$display("r0: %d", regfile[`ACC1]);
+				$display("r1: %d", regfile[`ACC2]);
+				$display("r2: %d", regfile[2]);
+				$display("r3: %d", regfile[3]);
+				$display("r4: %d", regfile[4]);
+				$display("r5: %d", regfile[5]);
+				$display("r6: %d", regfile[6]);
+				$display("r7: %d", regfile[7]);
 				pc <= pc + 1; // bump pc
-				if(5'b10000 < s) begin // phase 1 decoding
+				if(5'b10000 > ir `OPCODE1) begin // phase 1 decoding
 					// Left VLIW Instruction
 					case (ir `OPCODE1)
 						`OPa2r: begin regfile[ir `REG1] <= regfile[`ACC1]; end
@@ -154,7 +163,7 @@ module processor(halt, reset, clk);
 							end
 						end
 						`OPsh:  begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_shift_l : regfile[`ACC1]<<regfile[ir `REG1]; end
-						`OPadd: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_add_l : regfile[`ACC1]+regfile[ir `REG1]; end
+						`OPadd: begin 	$display("add"); regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_add_l : regfile[`ACC1]+regfile[ir `REG1]; end
 						`OPsub:	begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_sub_l : regfile[`ACC1]-regfile[ir `REG1]; end
 						`OPmul: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_mul_l : regfile[`ACC1]*regfile[ir `REG1]; end
 						`OPdiv: begin regfile[`ACC1] `WORD <= regfile[`ACC1][`TYPEBIT] ? f_div_l : regfile[`ACC1]/regfile[ir `REG1]; end
@@ -198,13 +207,13 @@ module processor(halt, reset, clk);
 				end
 				else begin // phase 2 decoding
 					case (ir `OPCODE1)
-						`OPpre: begin pre <= ir `IMM8; end
+						`OPpre: begin $display("pre"); pre <= ir `IMM8; end
 						`OPjp8: begin pc <= {pre, ir `IMM8}; end
 						`OPjnz8: begin if (ir `REG1 != 0) pc <= {pre, ir `IMM8}; end
 						`OPjz8: begin if (ir `REG1 == 0) pc <= {pre, ir `IMM8}; end
 						`OPcf8: begin regfile[ir `REG1] = {1'b1, pre, ir `IMM8}; end
-						`OPci8: begin regfile[ir `REG1] = {1'b0, pre, ir `IMM8}; end
-						`OPsys: begin halt <= 1; end
+						`OPci8: begin $display("ci8"); regfile[ir `REG1] = {1'b0, pre, ir `IMM8}; end
+						`OPsys: begin $display("sys"); halt <= 1; end
 					endcase
 				end
 				s <= `Fetch;
