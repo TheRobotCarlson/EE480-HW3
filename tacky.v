@@ -151,8 +151,8 @@ module processor(halt, reset, clk);
 						`OPr2a: begin regfile[`ACC1]`WORD <= temp_l; end
 						`OPjr: begin pc <= temp_l; end
 						`OPst: begin mainmem[temp_l] <= regfile[`ACC1]`WORD; end //to check
-						`OPlf: begin temp_l <= mainmem[pc]`WORD; end //to check
-						`OPli: begin temp_l <= mainmem[pc]`WORD; end //to check PC increment
+						`OPlf: begin regfile[ir `REG1] <= {1'b1, mainmem[regfile[`ACC1]`WORD]}; end //to check
+						`OPli: begin regfile[ir `REG1] <= {1'b0, mainmem[regfile[`ACC1]`WORD]}; end //to check PC increment
 						// ALU
 						`OPcvt: begin
 							regfile[`ACC1]`WORD <= regfile[ir `REG1][`TYPEBIT] ? f_f2i_l : f_i2f_l;
@@ -161,10 +161,10 @@ module processor(halt, reset, clk);
 						`OPslt: begin
 							if(regfile[ir `REG1][`TYPEBIT]) begin // Use float slt
 								regfile[`ACC1]`WORD <= f_slt_l;
-								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
+								regfile[`ACC1][`TYPEBIT] <= 1'b0; // Set acc type to int
 							end else begin // User int slt
 								regfile[`ACC1]`WORD <= regfile[`ACC1]`WORD < temp_l;
-								regfile[`ACC1][`TYPEBIT] <= 1'b1; // Set acc type to int
+								regfile[`ACC1][`TYPEBIT] <= 1'b0; // Set acc type to int
 							end
 						end
 						`OPsh:  begin regfile[`ACC1]`WORD <= regfile[`ACC1][`TYPEBIT] ? f_shift_l : regfile[`ACC1]`WORD << temp_l; end
@@ -182,13 +182,13 @@ module processor(halt, reset, clk);
 						`OPa2r: begin temp_r <= regfile[`ACC2]`WORD; end
 						`OPr2a: begin regfile[`ACC2]`WORD <= temp_r; end
 						`OPjr: begin pc <= temp_r; end
-						`OPst: begin mainmem[regfile[ir `REG2]]`WORD <= regfile[`ACC2]`WORD; end //to check
-						`OPlf: begin temp_r <= mainmem[pc]`WORD; end //to check
-						`OPli: begin temp_r <= mainmem[pc]`WORD; end //to check PC increment
+						`OPst: begin mainmem[temp_r] <= regfile[`ACC2]`WORD; end //to check
+						`OPlf: begin regfile[ir `REG2] <= {1'b1, mainmem[regfile[`ACC2]`WORD]}; end //to check
+						`OPli: begin regfile[ir `REG2] <= {1'b0, mainmem[regfile[`ACC2]`WORD]}; end //to check PC increment
 						// ALU
 						`OPcvt: begin
-							regfile[`ACC2]`WORD <= regfile[ir `REG2][`TYPEBIT]`WORD ? f_f2i_r : f_i2f_r;
-							regfile[`ACC2][`TYPEBIT]`WORD <= regfile[ir `REG2][`TYPEBIT]`WORD^1'b1; // Flip register type
+							regfile[`ACC2]`WORD <= regfile[ir `REG2][`TYPEBIT] ? f_f2i_r : f_i2f_r;
+							regfile[`ACC2][`TYPEBIT] <= regfile[ir `REG2][`TYPEBIT]^1'b1; // Flip register type
 						end
 						`OPslt: begin
 							if(regfile[ir `REG2][`TYPEBIT]) begin // Use float slt
@@ -202,12 +202,12 @@ module processor(halt, reset, clk);
 						`OPsh:  begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_shift_r : regfile[`ACC2]`WORD << temp_r; end
 						`OPadd: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_add_r : regfile[`ACC2]`WORD + temp_r; end
 						`OPsub:	begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_sub_r : regfile[`ACC2]`WORD - temp_r; end
-						`OPmul: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_mul_r : regfile[`ACC2]`WORD * regfile[ir `REG2]`WORD; end
-						`OPdiv: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_div_r : regfile[`ACC2]`WORD / regfile[ir `REG2]`WORD; end
+						`OPmul: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_mul_r : regfile[`ACC2]`WORD * temp_r; end
+						`OPdiv: begin regfile[`ACC2]`WORD <= regfile[`ACC2][`TYPEBIT] ? f_div_r : regfile[`ACC2]`WORD / temp_r; end
 						`OPnot: begin regfile[`ACC2]`WORD <= ~(regfile[ir `REG2]`WORD); end
-						`OPxor: begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD ^ regfile[ir `REG2]`WORD; end
-						`OPand: begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD & regfile[ir `REG2]`WORD; end
-						`OPor:  begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD | regfile[ir `REG2]`WORD; end
+						`OPxor: begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD ^ temp_r; end
+						`OPand: begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD & temp_r; end
+						`OPor:  begin regfile[`ACC2]`WORD <= regfile[`ACC2]`WORD | temp_r; end
 					endcase
 				end
 				else begin // phase 2 decoding
