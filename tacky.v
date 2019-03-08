@@ -130,16 +130,16 @@ module processor(halt, reset, clk);
 		`Fetch: begin ir <= mainmem[pc]; s <= `Execute; end // load from memory
 		`Execute: 
 			begin 
-				$display("\npc: %d", pc);
-				$display("pre: %d", pre);
-				$display("r0: %d %h", regfile[`ACC1]`WORD, regfile[`ACC1]`WORD);
-				$display("r1: %d %h", regfile[`ACC2]`WORD, regfile[`ACC2]`WORD);
-				$display("r2: %d %h", regfile[2]`WORD, regfile[2]`WORD);
-				$display("r3: %d %h", regfile[3]`WORD, regfile[3]`WORD);
-				$display("r4: %d %h", regfile[4]`WORD, regfile[4]`WORD);
-				$display("r5: %d %h", regfile[5]`WORD, regfile[5]`WORD);
-				$display("r6: %d %h", regfile[6]`WORD, regfile[6]`WORD);
-				$display("r7: %d %h", regfile[7]`WORD, regfile[7]`WORD);
+				// $display("\npc: %d", pc);
+				// $display("pre: %d", pre);
+				// $display("r0: %d %h", regfile[`ACC1]`WORD, regfile[`ACC1]`WORD);
+				// $display("r1: %d %h", regfile[`ACC2]`WORD, regfile[`ACC2]`WORD);
+				// $display("r2: %d %h", regfile[2]`WORD, regfile[2]`WORD);
+				// $display("r3: %d %h", regfile[3]`WORD, regfile[3]`WORD);
+				// $display("r4: %d %h", regfile[4]`WORD, regfile[4]`WORD);
+				// $display("r5: %d %h", regfile[5]`WORD, regfile[5]`WORD);
+				// $display("r6: %d %h", regfile[6]`WORD, regfile[6]`WORD);
+				// $display("r7: %d %h", regfile[7]`WORD, regfile[7]`WORD);
 				pc <= pc + 1; // bump pc
 				if(5'b10000 > ir `OPCODE1) begin // phase 1 decoding
 					// Left VLIW Instruction
@@ -227,7 +227,23 @@ module processor(halt, reset, clk);
 	end
 endmodule
 
-
+module testbench;
+    reg reset = 0;
+    reg clk = 0;
+    wire halted;
+    processor PE(halted, reset, clk);
+    initial begin
+        $dumpfile("output.txt");
+        $dumpvars(0, PE);
+        #10 reset = 1;
+        #10 reset = 0;
+        while (!halted) begin
+            #10 clk = 1;
+            #10 clk = 0;
+        end
+        $finish;
+    end
+endmodule
 
 // ************************************************ Float ********************************************
 
@@ -344,23 +360,4 @@ module f2i(i, f);
 	fslt m1(big, `F32767, f);
 	assign ui = {1'b1, f `FFRAC, 16'b0} >> ((128+22) - f `FEXP);
 	assign i = (tiny ? 0 : (big ? 32767 : (f `FSIGN ? (-ui) : ui)));
-endmodule
-
-
-module testbench;
-    reg reset = 0;
-    reg clk = 0;
-    wire halted;
-    processor PE(halted, reset, clk);
-    initial begin
-        $dumpfile("output.txt");
-        $dumpvars(0, PE);
-        #10 reset = 1;
-        #10 reset = 0;
-        while (!halted) begin
-            #10 clk = 1;
-            #10 clk = 0;
-        end
-        $finish;
-    end
 endmodule
