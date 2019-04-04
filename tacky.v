@@ -38,16 +38,16 @@
 
 // PHASE 2 DECODING
 // 13 bit + 3 bit padding: pre jp8 sys
-`define OPpre	5'b10001 // must be 17
-`define OPjp8   5'b10010
-`define OPsys   5'b10011
+`define OPpre	 5'b10001 // must be 17
+`define OPjp8  5'b10010
+`define OPsys  5'b10011
 
 // 16 bit	
 // cf8 ci8 jnz8 jz8
-`define OPcf8	5'b10100
-`define OPci8	5'b10101
-`define OPjnz8	5'b10110
-`define OPjz8	5'b10111
+`define OPcf8	 5'b10100
+`define OPci8	 5'b10101
+`define OPjnz8 5'b10110
+`define OPjz8	 5'b10111
 
 // state numbers only
 `define Fetch	5'b11111
